@@ -1,6 +1,6 @@
 import tensorflow as tf
 from gcn.utils import preprocess_features, preprocess_adj, chebyshev_polynomials
-from load_data import load_train_val_test, load_aminer, load_infra
+from utils import load_train_val_test, load_aminer, load_infra
 from models import Model
 
 flags = tf.app.flags
