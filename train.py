@@ -1,5 +1,5 @@
 import tensorflow as tf
-from gcn.utils import preprocess_features, preprocess_adj, chebyshev_polynomials
+from gcn.utils import preprocess_adj, chebyshev_polynomials, sparse_to_tuple
 from utils import load_train_val_test, load_aminer, load_infra
 from models import Model
 
@@ -17,14 +17,14 @@ flags.DEFINE_float('lmbda', 1e-2, 'Weight for type classification loss term')
 flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of epochs).')
 flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
 
-features, adj, node_types = load_aminer()
+features, adj, node_types = load_infra()
 n_nodes = features.shape[0]
 n_features = features.shape[1]
 n_types = node_types.shape[1]
 
 adj_orig = adj.todense()
 train_adj, train_mask, val_mask, test_mask = load_train_val_test(adj)
-features = preprocess_features(features)
+features = sparse_to_tuple(features)
 
 if FLAGS.model == 'gcn':
     support = [preprocess_adj(train_adj)]
@@ -34,6 +34,8 @@ elif FLAGS.model == 'gcn_cheby':
     n_supports = 1 + FLAGS.max_degree
 else:
     raise ValueError('Invalid argument for model: ' + str(FLAGS.model))
+
+print('Supports Created!')
 
 placeholders = {
     'support': [tf.sparse_placeholder(tf.float32) for _ in range(n_supports)],
@@ -47,7 +49,10 @@ placeholders = {
     'num_features_nonzero': tf.placeholder(tf.int32)
 }
 
+print(features[2][1])
 model = Model(name='Multilayer_GCN', placeholders=placeholders, num_features=features[2][1], num_nodes=adj.shape[0])
+
+print("Model Created!")
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
