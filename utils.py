@@ -115,17 +115,6 @@ def load_infra():
     return features, total_adj, make_node_types(n0, n1, n2)
 
 
-def load_feature_adj_types(dataset=None):
-    feature = np.random.rand(1000, 500)
-    adj = np.random.randint(low=0, high=2, size=(1000, 1000))
-    sparse_feature = sp.csr_matrix(feature)
-    sparse_adj = sp.csr_matrix(adj)
-    node_types = np.random.randint(low=0, high=3, size=(1000,))
-    one_hot_types = np.zeros(shape=(1000, 3), dtype=int)
-    one_hot_types[np.arange(1000), node_types] = 1
-    return sparse_feature, sparse_adj, one_hot_types
-
-
 def selection(mat, val_prop, test_prop):
     mat_triu = sp.triu(mat)
     mat_tuple = sparse_to_tuple(mat_triu)
@@ -155,6 +144,7 @@ def masking(true_indices, false_indices, shape):
     false_mask = sp.csr_matrix((false_data, (false_indices[:, 0], false_indices[:, 1])), shape=shape)
 
     final_mask = true_mask + false_mask
+    final_mask = final_mask + final_mask.T
 
     return final_mask
 
@@ -179,10 +169,6 @@ def load_train_val_test(adj):
     train_mask = masking(train_edges, train_false_edges, shape=adj.shape)
     val_mask = masking(val_edges, val_false_edges, shape=adj.shape)
     test_mask = masking(test_edges, test_false_edges, shape=adj.shape)
-
-    train_mask = train_mask + train_mask.T
-    val_mask = val_mask + val_mask.T
-    test_mask = test_mask + test_mask.T
 
     data = np.ones(train_edges.shape[0])
     adj_train = sp.csr_matrix((data, (train_edges[:, 0], train_edges[:, 1])), shape=adj.shape)
