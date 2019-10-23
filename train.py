@@ -41,7 +41,7 @@ placeholders = {
     'support': [tf.sparse_placeholder(tf.float32) for _ in range(n_supports)],
     'features': tf.sparse_placeholder(tf.float32),
     'edge_labels': tf.placeholder(tf.int32, shape=[n_nodes, n_nodes]),
-    'edge_mask': tf.placeholder(tf.int32, shape=[n_nodes, n_nodes]),
+    'edge_mask': tf.placeholder(tf.float32, shape=[n_nodes, n_nodes]),
     'node_types': tf.placeholder(tf.int32, shape=[n_nodes, n_types]),
     'gc_dropout': tf.placeholder_with_default(0., shape=()),
     'fc_dropout': tf.placeholder_with_default(0., shape=()),

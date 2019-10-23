@@ -147,10 +147,16 @@ def selection(mat, val_prop, test_prop):
 
 
 def masking(true_indices, false_indices, shape):
-    template_mask = np.zeros(shape=shape, dtype=int)
-    template_mask[true_indices] = 1
-    template_mask[false_indices] = 1
-    return template_mask
+    n_total = true_indices.shape[0] + false_indices.shape[0]
+    true_data = np.ones(true_indices.shape[0], dtype=float) * float(n_total) / true_indices.shape[0]
+    true_mask = sp.csr_matrix((true_data, (true_indices[:, 0], true_indices[:, 1])), shape=shape)
+
+    false_data = np.ones(false_indices.shape[0], dtype=float) * float(n_total) / false_indices.shape[0]
+    false_mask = sp.csr_matrix((false_data, (false_indices[:, 0], false_indices[:, 1])), shape=shape)
+
+    final_mask = true_mask + false_mask
+
+    return final_mask
 
 
 def load_train_val_test(adj):
@@ -163,7 +169,12 @@ def load_train_val_test(adj):
     edges.eliminate_zeros()
 
     train_edges, val_edges, test_edges = selection(edges, 0.05, 0.1)
-    train_false_edges, val_false_edges, test_false_edges = selection(non_edges, 0.05, 0.1)
+
+    num_test = test_edges.shape[0]
+    num_val = val_edges.shape[0]
+    test_prop_non_edges = float(num_test) / non_edges.nonzero()[0].shape[0]
+    val_prop_non_edges = float(num_val) / non_edges.nonzero()[0].shape[0]
+    train_false_edges, val_false_edges, test_false_edges = selection(non_edges, val_prop_non_edges, test_prop_non_edges)
 
     train_mask = masking(train_edges, train_false_edges, shape=adj.shape)
     val_mask = masking(val_edges, val_false_edges, shape=adj.shape)
