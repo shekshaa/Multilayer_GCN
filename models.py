@@ -114,8 +114,8 @@ class Model(object):
             all_edge_prediction.append(tf.stack(tmp, axis=-1))
         edge_logits = tf.stack(all_edge_prediction, axis=-1)
 
-        node_type_prediction = tf.one_hot(indices=tf.argmax(self.node_type_logits, 1), depth=self.n_types,
-                                          dtype=tf.int32)
+        # node_type_prediction = tf.one_hot(indices=tf.argmax(self.node_type_logits, 1), depth=self.n_types,
+        #                                   dtype=tf.int32)
         # selected_node_type = self.is_train * self.node_types + (1 - self.is_train) * node_type_prediction
         selected_node_type = self.node_types
         node_types1 = tf.cast(tf.expand_dims(tf.expand_dims(selected_node_type, axis=1), axis=3), dtype=tf.float32)
@@ -128,10 +128,10 @@ class Model(object):
         self.type_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.node_type_logits,
                                                                                 labels=self.node_types))
 
-        self.edge_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.final_edge_logits,
-                                                                                labels=tf.cast(self.edge_labels,
-                                                                                               dtype=tf.float32)) *
-                                        tf.cast(self.edge_mask, dtype=tf.float32))
+        non_mask_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.final_edge_logits,
+                                                                labels=tf.cast(self.edge_labels,
+                                                                               dtype=tf.float32))
+        self.edge_loss = tf.reduce_mean(tf.sparse_tensor_to_dense(self.edge_mask.__mul__(non_mask_loss)))
 
         l2_reg = 0
         for var in self.layers[0].vars.values():
