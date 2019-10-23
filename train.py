@@ -41,7 +41,7 @@ placeholders = {
     'support': [tf.sparse_placeholder(tf.float32) for _ in range(n_supports)],
     'features': tf.sparse_placeholder(tf.float32),
     'edge_labels': tf.placeholder(tf.int32, shape=[n_nodes, n_nodes]),
-    'edge_mask': tf.placeholder(tf.float32, shape=[n_nodes, n_nodes]),
+    'edge_mask': tf.sparse_placeholder(tf.float32),
     'node_types': tf.placeholder(tf.int32, shape=[n_nodes, n_types]),
     'gc_dropout': tf.placeholder_with_default(0., shape=()),
     'fc_dropout': tf.placeholder_with_default(0., shape=()),
@@ -69,7 +69,7 @@ with tf.Session() as sess:
         feed_dict[placeholders['is_train']] = 1
         feed_dict[placeholders['gc_dropout']] = FLAGS.gc_dropout
         feed_dict[placeholders['fc_dropout']] = FLAGS.fc_dropout
-        feed_dict[placeholders['edge_mask']] = train_mask
+        feed_dict[placeholders['edge_mask']] = sparse_to_tuple(train_mask)
 
         __, train_type_acc, train_edge_acc, train_loss = sess.run(
             [model.opt, model.type_acc, model.edge_acc, model.total_loss], feed_dict=feed_dict)
@@ -77,7 +77,7 @@ with tf.Session() as sess:
         feed_dict[placeholders['is_train']] = 0
         feed_dict[placeholders['gc_dropout']] = 0.
         feed_dict[placeholders['fc_dropout']] = 0.
-        feed_dict[placeholders['edge_mask']] = val_mask
+        feed_dict[placeholders['edge_mask']] = sparse_to_tuple(val_mask)
 
         val_type_acc, val_edge_acc, val_loss = sess.run([model.type_acc, model.edge_acc, model.total_loss],
                                                         feed_dict=feed_dict)
@@ -85,7 +85,7 @@ with tf.Session() as sess:
         feed_dict[placeholders['is_train']] = 0
         feed_dict[placeholders['gc_dropout']] = 0.
         feed_dict[placeholders['fc_dropout']] = 0.
-        feed_dict[placeholders['edge_mask']] = test_mask
+        feed_dict[placeholders['edge_mask']] = sparse_to_tuple(test_mask)
 
         test_type_acc, test_edge_acc, test_loss = sess.run([model.type_acc, model.edge_acc, model.total_loss],
                                                            feed_dict=feed_dict)
