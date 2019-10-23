@@ -41,13 +41,16 @@ class Model(object):
         self.edge_module_input = None
         self.type_acc = 0
         self.type_loss = 0
-        self.edge_acc = 0
+        self.recall = 0
+        self.precision = 0
+        self.f1 = 0
         self.edge_loss = 0
         self.total_loss = 0
 
         self.build()
         self.loss()
         self.acc()
+        self.precision_recall_f1()
 
         self.opt = self.optimizer.minimize(self.total_loss)
 
@@ -140,9 +143,19 @@ class Model(object):
         self.total_loss = FLAGS.lmbda * self.type_loss + self.edge_loss + FLAGS.weight_decay * l2_reg
 
     def acc(self):
-        self.type_acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.node_type_logits, 1),
-                                                        tf.argmax(self.node_types, 1)), dtype=tf.float32))
+        type_correct_predictions = tf.equal(tf.argmax(self.node_type_logits, 1),
+                                            tf.argmax(self.node_types, 1))
+        self.type_acc = tf.reduce_mean(tf.cast(type_correct_predictions, dtype=tf.float32))
 
+    def precision_recall_f1(self):
         edge_prediction = tf.cast(tf.greater_equal(tf.nn.sigmoid(self.final_edge_logits), 0.5), dtype=tf.int32)
 
-        self.edge_acc = tf.reduce_mean(tf.cast(tf.equal(edge_prediction, self.edge_labels), dtype=tf.float32))
+        # self.edge_acc = tf.reduce_mean(tf.cast(tf.equal(edge_prediction, self.edge_labels), dtype=tf.float32))
+        true_positive = tf.count_nonzero(edge_prediction * self.edge_labels)
+        true_negative = tf.count_nonzero((edge_prediction - 1) * (self.edge_labels - 1))
+        false_positive = tf.count_nonzero(edge_prediction * (self.edge_labels - 1))
+        false_negative = tf.count_nonzero((edge_prediction - 1) * self.edge_labels)
+
+        self.precision = true_positive / (true_positive + false_positive)
+        self.recall = true_positive / (true_positive + false_negative)
+        self.f1 = 2 * self.precision * self.recall / (self.precision + self.recall)
