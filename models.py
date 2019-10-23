@@ -116,7 +116,8 @@ class Model(object):
 
         node_type_prediction = tf.one_hot(indices=tf.argmax(self.node_type_logits, 1), depth=self.n_types,
                                           dtype=tf.int32)
-        selected_node_type = self.is_train * self.node_types + (1 - self.is_train) * node_type_prediction
+        # selected_node_type = self.is_train * self.node_types + (1 - self.is_train) * node_type_prediction
+        selected_node_type = self.node_types
         node_types1 = tf.cast(tf.expand_dims(tf.expand_dims(selected_node_type, axis=1), axis=3), dtype=tf.float32)
         node_types2 = tf.cast(tf.expand_dims(tf.expand_dims(selected_node_type, axis=0), axis=2), dtype=tf.float32)
         selection1 = tf.reduce_sum(tf.multiply(edge_logits, node_types1), axis=2, keepdims=True)
