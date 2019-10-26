@@ -53,45 +53,45 @@ model = Model(name='Multilayer_GCN', placeholders=placeholders, num_features=fea
 
 print("Model Created!")
 
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
+sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+sess.run(tf.global_variables_initializer())
 
-    feed_dict = dict()
-    feed_dict[placeholders['features']] = features
-    feed_dict[placeholders['edge_labels']] = adj_orig
-    feed_dict[placeholders['node_types']] = node_types
-    feed_dict[placeholders['num_features_nonzero']] = features[1].shape
+feed_dict = dict()
+feed_dict[placeholders['features']] = features
+feed_dict[placeholders['edge_labels']] = adj_orig
+feed_dict[placeholders['node_types']] = node_types
+feed_dict[placeholders['num_features_nonzero']] = features[1].shape
 
-    for i in range(n_supports):
-        feed_dict[placeholders['support'][i]] = support[i]
+for i in range(n_supports):
+    feed_dict[placeholders['support'][i]] = support[i]
 
-    for epoch in range(FLAGS.epochs):
-        feed_dict[placeholders['is_train']] = 1
-        feed_dict[placeholders['gc_dropout']] = FLAGS.gc_dropout
-        feed_dict[placeholders['fc_dropout']] = FLAGS.fc_dropout
-        feed_dict[placeholders['edge_mask']] = sparse_to_tuple(train_mask)
+for epoch in range(FLAGS.epochs):
+    feed_dict[placeholders['is_train']] = 1
+    feed_dict[placeholders['gc_dropout']] = FLAGS.gc_dropout
+    feed_dict[placeholders['fc_dropout']] = FLAGS.fc_dropout
+    feed_dict[placeholders['edge_mask']] = sparse_to_tuple(train_mask)
 
-        __, train_type_acc, train_edge_f1, train_loss = sess.run(
-            [model.opt, model.type_acc, model.f1, model.total_loss], feed_dict=feed_dict)
+    __, train_type_acc, train_edge_f1, train_loss = sess.run(
+        [model.opt, model.type_acc, model.f1, model.total_loss], feed_dict=feed_dict)
 
-        feed_dict[placeholders['is_train']] = 0
-        feed_dict[placeholders['gc_dropout']] = 0.
-        feed_dict[placeholders['fc_dropout']] = 0.
-        feed_dict[placeholders['edge_mask']] = sparse_to_tuple(val_mask)
+    feed_dict[placeholders['is_train']] = 0
+    feed_dict[placeholders['gc_dropout']] = 0.
+    feed_dict[placeholders['fc_dropout']] = 0.
+    feed_dict[placeholders['edge_mask']] = sparse_to_tuple(val_mask)
 
-        val_type_acc, val_edge_f1, val_loss = sess.run([model.type_acc, model.f1, model.total_loss],
-                                                       feed_dict=feed_dict)
+    val_type_acc, val_edge_f1, val_loss = sess.run([model.type_acc, model.f1, model.total_loss],
+                                                   feed_dict=feed_dict)
 
-        feed_dict[placeholders['is_train']] = 0
-        feed_dict[placeholders['gc_dropout']] = 0.
-        feed_dict[placeholders['fc_dropout']] = 0.
-        feed_dict[placeholders['edge_mask']] = sparse_to_tuple(test_mask)
+    feed_dict[placeholders['is_train']] = 0
+    feed_dict[placeholders['gc_dropout']] = 0.
+    feed_dict[placeholders['fc_dropout']] = 0.
+    feed_dict[placeholders['edge_mask']] = sparse_to_tuple(test_mask)
 
-        test_type_acc, test_edge_f1, test_loss = sess.run([model.type_acc, model.f1, model.total_loss],
-                                                          feed_dict=feed_dict)
+    test_type_acc, test_edge_f1, test_loss = sess.run([model.type_acc, model.f1, model.total_loss],
+                                                      feed_dict=feed_dict)
 
-        print('Epoch {}'.format(epoch + 1))
-        print('Train: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(train_loss, train_type_acc, train_edge_f1))
-        print('Val: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(val_loss, val_type_acc, val_edge_f1))
-        print('Test: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(test_loss, test_type_acc, test_edge_f1))
-        print('--------')
+    print('Epoch {}'.format(epoch + 1))
+    print('Train: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(train_loss, train_type_acc, train_edge_f1))
+    print('Val: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(val_loss, val_type_acc, val_edge_f1))
+    print('Test: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(test_loss, test_type_acc, test_edge_f1))
+    print('--------')
