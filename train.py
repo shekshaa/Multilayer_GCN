@@ -49,8 +49,7 @@ placeholders = {
     'num_features_nonzero': tf.placeholder(tf.int32)
 }
 
-with tf.device('/gpu:0'):
-    model = Model(name='Multilayer_GCN', placeholders=placeholders, num_features=features[2][1], num_nodes=adj.shape[0])
+model = Model(name='Multilayer_GCN', placeholders=placeholders, num_features=features[2][1], num_nodes=adj.shape[0])
 
 print("Model Created!")
 
