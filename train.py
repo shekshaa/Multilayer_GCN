@@ -49,7 +49,8 @@ placeholders = {
     'num_features_nonzero': tf.placeholder(tf.int32)
 }
 
-model = Model(name='Multilayer_GCN', placeholders=placeholders, num_features=features[2][1], num_nodes=adj.shape[0])
+with tf.device('/gpu:0'):
+    model = Model(name='Multilayer_GCN', placeholders=placeholders, num_features=features[2][1], num_nodes=adj.shape[0])
 
 print("Model Created!")
 
@@ -95,3 +96,5 @@ for epoch in range(FLAGS.epochs):
     print('Val: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(val_loss, val_type_acc, val_edge_f1))
     print('Test: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(test_loss, test_type_acc, test_edge_f1))
     print('--------')
+
+sess.close()
