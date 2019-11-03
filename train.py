@@ -54,7 +54,10 @@ with tf.device('/gpu:0'):
 
 print("Model Created!")
 
-sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.Session(config=config)
+
 sess.run(tf.global_variables_initializer())
 
 feed_dict = dict()
