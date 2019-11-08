@@ -104,9 +104,9 @@ def load_infra():
     adj02 = make_sparse_matrix(adj02_indices, (n0, n2))
     adj12 = make_sparse_matrix(adj12_indices, (n1, n2))
 
-    r0 = sp.hstack((adj0, adj01, adj02))
-    r1 = sp.hstack((adj01.transpose(), adj1, adj12))
-    r2 = sp.hstack((adj02.transpose(), adj12.transpose(), adj2))
+    r0 = sp.hstack((adj0, adj01, adj02), format="csr")
+    r1 = sp.hstack((adj01.transpose(), adj1, adj12), format="csr")
+    r2 = sp.hstack((adj02.transpose(), adj12.transpose(), adj2), format="csr")
 
     total_adj = sp.vstack((r0, r1, r2))
 
