@@ -7,7 +7,8 @@ FLAGS = flags.FLAGS
 
 
 class Model(object):
-    def __init__(self, name, placeholders, num_nodes, num_features, super_mask, activation=tf.nn.tanh, bias=True):
+    def __init__(self, name, placeholders, num_nodes, num_features, super_mask, use_weight,
+                 activation=tf.nn.tanh, bias=True):
         self.name = name
 
         # feature variables
@@ -26,6 +27,7 @@ class Model(object):
         self.n_types = self.node_types.get_shape().as_list()[1]
 
         # network architectural settings
+        self.use_weight = use_weight
         self.activation = activation
         self.gc_dropout = placeholders['gc_dropout']
         self.fc_dropout = placeholders['fc_dropout']
@@ -128,11 +130,14 @@ class Model(object):
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
-                    # weight = self.w['{}_{}'.format(i, j)]
-                    # self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(tf.matmul(self.edge_module_input_type[i], weight)
-                    #                                                    , tf.transpose(self.edge_module_input_type[j]))
-                    self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(self.edge_module_input_type[i],
-                                                                       tf.transpose(self.edge_module_input_type[j]))
+                    if self.use_weight:
+                        weight = self.w['{}_{}'.format(i, j)]
+                        self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(
+                            tf.matmul(self.edge_module_input_type[i], weight)
+                            , tf.transpose(self.edge_module_input_type[j]))
+                    else:
+                        self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(self.edge_module_input_type[i],
+                                                                           tf.transpose(self.edge_module_input_type[j]))
 
     def loss(self):
         self.type_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.node_type_logits,
@@ -151,7 +156,7 @@ class Model(object):
                                                                                                              i,
                                                                                                              j)],
                                                                                                      dtype=tf.float32)))
-                    self.edge_loss.append(self.edge_mask['adj_{}_{}'.format(i, j)]*(self.non_mask_loss[-1]))
+                    self.edge_loss.append(self.edge_mask['adj_{}_{}'.format(i, j)] * (self.non_mask_loss[-1]))
                     self.tmp2.append(tf.count_nonzero(self.edge_loss[-1]))
                     tmp = tf.reduce_mean(self.edge_loss[-1])
                     self.total_edge_loss += tmp
@@ -191,7 +196,7 @@ class Model(object):
 
 
 class Model2(object):
-    def __init__(self, name, placeholders, num_nodes, super_mask, activation=tf.nn.tanh, bias=True):
+    def __init__(self, name, placeholders, num_nodes, super_mask, use_weight, activation=tf.nn.tanh, bias=True):
         self.name = name
 
         # feature variables
@@ -207,6 +212,7 @@ class Model2(object):
         self.n_types = len(self.support)
 
         # network architectural settings
+        self.use_weight = use_weight
         self.activation = activation
         self.gc_dropout = placeholders['gc_dropout']
         self.fc_dropout = placeholders['fc_dropout']
@@ -278,11 +284,13 @@ class Model2(object):
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
-                    # weight = self.w['{}_{}'.format(i, j)]
-                    # self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(tf.matmul(self.h2['{}'.format(i)], weight)
-                    #                                                    , tf.transpose(self.h2['{}'.format(j)]))
-                    self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(self.h2['{}'.format(i)],
-                                                                       tf.transpose(self.h2['{}'.format(j)]))
+                    if self.use_weight:
+                        weight = self.w['{}_{}'.format(i, j)]
+                        self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(tf.matmul(self.h2['{}'.format(i)], weight)
+                                                                           , tf.transpose(self.h2['{}'.format(j)]))
+                    else:
+                        self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(self.h2['{}'.format(i)],
+                                                                           tf.transpose(self.h2['{}'.format(j)]))
 
     def loss(self):
         self.total_edge_loss = 0
@@ -299,7 +307,7 @@ class Model2(object):
                                                                                                              i,
                                                                                                              j)],
                                                                                                      dtype=tf.float32)))
-                    self.edge_loss.append(self.edge_mask['adj_{}_{}'.format(i, j)]*(self.non_mask_loss[-1]))
+                    self.edge_loss.append(self.edge_mask['adj_{}_{}'.format(i, j)] * (self.non_mask_loss[-1]))
                     self.tmp2.append(tf.count_nonzero(self.edge_loss[-1]))
                     tmp = tf.reduce_mean(self.edge_loss[-1])
                     self.total_edge_loss += tmp

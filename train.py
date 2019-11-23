@@ -17,6 +17,7 @@ flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
 flags.DEFINE_integer('hidden3', 128, 'Number of units in hidden layer 3.')
 flags.DEFINE_float('fc_dropout', 0., 'Dropout rate (1 - keep probability).')
 flags.DEFINE_float('gc_dropout', 0., 'Dropout rate (1 - keep probability).')
+flags.DEFINE_integer('use_weight', 1, 'use w_ij')
 flags.DEFINE_float('weight_decay', 5e-4, 'Weight for L2 loss on embedding matrix.')
 flags.DEFINE_float('lmbda', 0., 'Weight for type classification loss term')
 flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of epochs).')
@@ -72,7 +73,8 @@ model = Model(name='Multilayer_GCN',
               placeholders=placeholders,
               num_nodes=train_adj.shape[0],
               num_features=n_features,
-              super_mask=super_mask)
+              super_mask=super_mask,
+              use_weight=FLAGS.use_weight)
 
 print("Model Created!")
 
