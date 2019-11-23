@@ -168,6 +168,7 @@ class Model(object):
         self.type_acc = tf.reduce_mean(tf.cast(type_correct_predictions, dtype=tf.float32))
 
     def precision_recall_f1(self):
+        self.edge_prediction = []
         true_positive = true_negative = false_positive = false_negative = 0
         for i in range(self.n_types):
             for j in range(i, self.n_types):
@@ -178,9 +179,10 @@ class Model(object):
                     else:
                         labels = self.edge_labels['adj_{}_{}'.format(i, j)]
 
-                    edge_prediction = tf.cast(
+                    self.edge_prediction.append(tf.cast(
                         tf.greater_equal(tf.nn.sigmoid(self.edge_logits['{}_{}'.format(i, j)]), 0.5),
-                        dtype=tf.int32)
+                        dtype=tf.int32))
+                    edge_prediction = self.edge_prediction[-1]
                     true_positive += tf.count_nonzero(edge_prediction * labels)
                     true_negative += tf.count_nonzero((edge_prediction - 1) * (labels - 1))
                     false_positive += tf.count_nonzero(edge_prediction * (labels - 1))

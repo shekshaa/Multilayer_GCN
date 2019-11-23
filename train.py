@@ -10,7 +10,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string('model', 'gcn_cheby', 'Model string.')  # 'kipf_gcn', 'cheby_gcn'
 flags.DEFINE_string('dataset', 'infra', 'Dataset string.')
-flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
+flags.DEFINE_float('learning_rate', 0.005, 'Initial learning rate.')
 flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
 flags.DEFINE_integer('hidden1', 32, 'Number of units in hidden layer 1.')
 flags.DEFINE_integer('hidden2', 4, 'Number of units in hidden layer 2.')
@@ -18,9 +18,9 @@ flags.DEFINE_integer('hidden3', 128, 'Number of units in hidden layer 3.')
 flags.DEFINE_float('fc_dropout', 0., 'Dropout rate (1 - keep probability).')
 flags.DEFINE_float('gc_dropout', 0., 'Dropout rate (1 - keep probability).')
 flags.DEFINE_float('weight_decay', 0., 'Weight for L2 loss on embedding matrix.')
-flags.DEFINE_float('lmbda', 1., 'Weight for type classification loss term')
+flags.DEFINE_float('lmbda', 0., 'Weight for type classification loss term')
 flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of epochs).')
-flags.DEFINE_integer('max_degree', 10, 'Maximum Chebyshev polynomial degree.')
+flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
 
 if FLAGS.dataset == 'infra':
     all_sub_adj, node_types, features = load_infra()
@@ -76,7 +76,10 @@ model = Model(name='Multilayer_GCN',
 
 print("Model Created!")
 
-sess = tf.Session()
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.Session(config=tf.ConfigProto())
+
 sess.run(tf.global_variables_initializer())
 
 now = datetime.now()
@@ -98,9 +101,10 @@ for epoch in range(FLAGS.epochs):
     feed_dict.update({placeholders['edge_mask'][key]: sparse_to_tuple(value) for key, value in train_mask.items()})
 
     sess.run(model.opt, feed_dict=feed_dict)
-    w, tmp = sess.run([model.w['0_1'], model.tmp2[1]], feed_dict=feed_dict)
+    w, tmp, pred = sess.run([model.w['0_1'], model.tmp2[1], model.edge_prediction[1]], feed_dict=feed_dict)
     print(w)
     print(tmp)
+    print(np.sum(pred == 1))
     # print(nm_loss)
 
     summary, train_type_acc, train_edge_f1, train_loss = sess.run(
@@ -115,8 +119,8 @@ for epoch in range(FLAGS.epochs):
     val_type_acc, val_edge_f1, val_loss = sess.run([model.type_acc, model.precision, model.total_loss],
                                                    feed_dict=feed_dict)
 
-    tmp = sess.run([model.tmp2[1]], feed_dict=feed_dict)
-    print(tmp)
+    # tmp = sess.run([model.tmp2[1]], feed_dict=feed_dict)
+    # print(tmp)
 
     feed_dict[placeholders['gc_dropout']] = 0.
     feed_dict[placeholders['fc_dropout']] = 0.
@@ -125,8 +129,8 @@ for epoch in range(FLAGS.epochs):
     test_type_acc, test_edge_f1, test_loss = sess.run([model.type_acc, model.precision, model.total_loss],
                                                       feed_dict=feed_dict)
 
-    tmp = sess.run([model.tmp2[1]], feed_dict=feed_dict)
-    print(tmp)
+    # tmp = sess.run([model.tmp2[1]], feed_dict=feed_dict)
+    # print(tmp)
 
     print('Epoch {}'.format(epoch + 1))
     print('Train: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(train_loss, train_type_acc, train_edge_f1))

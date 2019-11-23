@@ -75,7 +75,7 @@ def load_aminer():
 
     features = np.concatenate((node_types, one_hot_labels), axis=1)
 
-    return all_sub_adj, node_types
+    return all_sub_adj, node_types, features
 
 
 def load_infra():
@@ -101,6 +101,10 @@ def load_infra():
     n0 = np.max(adj0_indices, axis=0)[0] + 1
     n1 = np.max(adj1_indices, axis=0)[0] + 1
     n2 = np.max(adj2_indices, axis=0)[0] + 1
+
+    print(n0)
+    print(n1)
+    print(n2)
 
     adj0 = make_sparse_matrix(adj0_indices, (n0, n0))
     adj1 = make_sparse_matrix(adj1_indices, (n1, n1))
@@ -150,10 +154,10 @@ def masking(true_indices, false_indices, n_total, n_edges, shape):
     print('false:', false_indices.shape[0])
     print(float(n_total) / n_edges)
     print(float(n_total) / (n_total - n_edges))
-    true_data = np.ones(true_indices.shape[0], dtype=float) * float(n_total) / n_edges
+    true_data = np.ones(true_indices.shape[0], dtype=float) * (float(n_total) / n_edges)
     true_mask = sp.csr_matrix((true_data, (true_indices[:, 0], true_indices[:, 1])), shape=shape)
 
-    false_data = np.ones(false_indices.shape[0], dtype=float) * float(n_total) / (n_total - n_edges)
+    false_data = np.ones(false_indices.shape[0], dtype=float) * (float(n_total) / (n_total - n_edges))
     false_mask = sp.csr_matrix((false_data, (false_indices[:, 0], false_indices[:, 1])), shape=shape)
 
     final_mask = true_mask + false_mask
