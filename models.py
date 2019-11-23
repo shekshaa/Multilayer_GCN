@@ -1,5 +1,5 @@
 import tensorflow as tf
-from gcn.layers import GraphConvolution, Dense
+from gcn.layers import GraphConvolution
 from gcn.inits import glorot, zeros
 
 flags = tf.app.flags
@@ -143,23 +143,18 @@ class Model(object):
         self.type_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.node_type_logits,
                                                                                 labels=self.node_types))
         self.total_edge_loss = 0
-        self.non_mask_loss = []
-        self.edge_loss = []
-        self.tmp2 = []
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
-                    self.non_mask_loss.append(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.edge_logits['{}_{}'
-                                                                                      .format(i, j)],
-                                                                                      labels=tf.cast(self.edge_labels[
-                                                                                                         'adj_{}_{}'.format(
-                                                                                                             i,
-                                                                                                             j)],
-                                                                                                     dtype=tf.float32)))
-                    self.edge_loss.append(self.edge_mask['adj_{}_{}'.format(i, j)] * (self.non_mask_loss[-1]))
-                    self.tmp2.append(tf.count_nonzero(self.edge_loss[-1]))
-                    tmp = tf.reduce_mean(self.edge_loss[-1])
-                    self.total_edge_loss += tmp
+                    non_mask_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.edge_logits['{}_{}'
+                                                                            .format(i, j)],
+                                                                            labels=tf.cast(self.edge_labels[
+                                                                                               'adj_{}_{}'.format(
+                                                                                                   i,
+                                                                                                   j)],
+                                                                                           dtype=tf.float32))
+
+                    self.total_edge_loss += tf.reduce_mean(self.edge_mask['adj_{}_{}'.format(i, j)] * non_mask_loss)
 
         l2_reg = 0
         for var in self.layers[0].vars.values():
@@ -173,16 +168,14 @@ class Model(object):
         self.type_acc = tf.reduce_mean(tf.cast(type_correct_predictions, dtype=tf.float32))
 
     def precision_recall_f1(self):
-        self.edge_prediction = []
         true_positive = true_negative = false_positive = false_negative = 0
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
                     labels = self.edge_labels['adj_{}_{}'.format(i, j)]
-                    self.edge_prediction.append(tf.cast(
+                    edge_prediction = tf.cast(
                         tf.greater_equal(tf.nn.sigmoid(self.edge_logits['{}_{}'.format(i, j)]), 0.5),
-                        dtype=tf.int32))
-                    edge_prediction = self.edge_prediction[-1]
+                        dtype=tf.int32)
                     mask = self.edge_mask['adj_{}_{}'.format(i, j)]
                     true_positive += tf.count_nonzero(tf.cast(edge_prediction * labels, dtype=tf.float32) * mask)
                     true_negative += tf.count_nonzero(tf.cast((edge_prediction - 1) * (labels - 1),
@@ -294,23 +287,18 @@ class Model2(object):
 
     def loss(self):
         self.total_edge_loss = 0
-        self.non_mask_loss = []
-        self.edge_loss = []
-        self.tmp2 = []
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
-                    self.non_mask_loss.append(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.edge_logits['{}_{}'
-                                                                                      .format(i, j)],
-                                                                                      labels=tf.cast(self.edge_labels[
-                                                                                                         'adj_{}_{}'.format(
-                                                                                                             i,
-                                                                                                             j)],
-                                                                                                     dtype=tf.float32)))
-                    self.edge_loss.append(self.edge_mask['adj_{}_{}'.format(i, j)] * (self.non_mask_loss[-1]))
-                    self.tmp2.append(tf.count_nonzero(self.edge_loss[-1]))
-                    tmp = tf.reduce_mean(self.edge_loss[-1])
-                    self.total_edge_loss += tmp
+                    non_mask_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.edge_logits['{}_{}'
+                                                                            .format(i, j)],
+                                                                            labels=tf.cast(self.edge_labels[
+                                                                                               'adj_{}_{}'.format(
+                                                                                                   i,
+                                                                                                   j)],
+                                                                                           dtype=tf.float32))
+
+                    self.total_edge_loss += tf.reduce_mean(self.edge_mask['adj_{}_{}'.format(i, j)] * non_mask_loss)
 
         l2_reg = 0
         for _, layers in self.layers.items():
@@ -320,16 +308,14 @@ class Model2(object):
         self.total_loss = self.total_edge_loss + FLAGS.weight_decay * l2_reg
 
     def precision_recall_f1(self):
-        self.edge_prediction = []
         true_positive = true_negative = false_positive = false_negative = 0
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
                     labels = self.edge_labels['adj_{}_{}'.format(i, j)]
-                    self.edge_prediction.append(tf.cast(
+                    edge_prediction= tf.cast(
                         tf.greater_equal(tf.nn.sigmoid(self.edge_logits['{}_{}'.format(i, j)]), 0.5),
-                        dtype=tf.int32))
-                    edge_prediction = self.edge_prediction[-1]
+                        dtype=tf.int32)
                     mask = self.edge_mask['adj_{}_{}'.format(i, j)]
                     true_positive += tf.count_nonzero(tf.cast(edge_prediction * labels, dtype=tf.float32) * mask)
                     true_negative += tf.count_nonzero(tf.cast((edge_prediction - 1) * (labels - 1),

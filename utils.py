@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from gcn.utils import sparse_to_tuple
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import average_precision_score
 
 
 def get_indices(df):
@@ -57,6 +55,10 @@ def load_aminer():
     n0 = np.max(adj0_indices, axis=0)[0] + 1
     n1 = np.max(adj1_indices, axis=0)[0] + 1
     n2 = np.max(adj2_indices, axis=0)[0] + 1
+
+    print(n0)
+    print(n1)
+    print(n2)
 
     adj0 = make_sparse_matrix(adj0_indices, (n0, n0))
     adj1 = make_sparse_matrix(adj1_indices, (n1, n1))

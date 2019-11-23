@@ -1,6 +1,5 @@
 import tensorflow as tf
-import numpy as np
-from gcn.utils import preprocess_adj, chebyshev_polynomials, sparse_to_tuple
+from gcn.utils import preprocess_adj, chebyshev_polynomials
 from datetime import datetime
 from utils import load_train_val_test2, load_infra, load_aminer
 from models import Model2
@@ -87,20 +86,6 @@ feed_dict.update({placeholders['support0'][i]: support[0][i] for i in range(len(
 feed_dict.update({placeholders['support1'][i]: support[1][i] for i in range(len(support[1]))})
 feed_dict.update({placeholders['support2'][i]: support[2][i] for i in range(len(support[2]))})
 feed_dict.update({placeholders['edge_labels'][key]: value.todense() for key, value in all_sub_adj.items()})
-
-w_grads = []
-for i in range(3):
-    for j in range(3):
-        if super_mask[i][j]:
-            w_grads.append(tf.gradients(ys=model.total_loss, xs=model.w['{}_{}'.format(i, j)])[0])
-
-elogits_grads = []
-for i in range(3):
-    for j in range(3):
-        if super_mask[i][j]:
-            elogits_grads.append(tf.gradients(ys=model.total_loss, xs=model.edge_logits['{}_{}'.format(i, j)])[0])
-
-gg = tf.gradients(ys=model.total_loss, xs=model.total_edge_loss)[0]
 
 for epoch in range(FLAGS.epochs):
     feed_dict[placeholders['gc_dropout']] = FLAGS.gc_dropout

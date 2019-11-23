@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from gcn.utils import preprocess_adj, chebyshev_polynomials, sparse_to_tuple
+from gcn.utils import preprocess_adj, chebyshev_polynomials
 import scipy.sparse as sp
 from datetime import datetime
 from utils import load_train_val_test2, load_infra, load_aminer
