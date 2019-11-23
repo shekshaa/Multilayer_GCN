@@ -120,7 +120,6 @@ class Model(object):
                         var = glorot(shape=(n_features, n_features), name='w_{}_{}'.format(i, j))
                         tf.summary.histogram(name='w_{}_{}'.format(i, j), values=var)
                         self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
-                        # self.w['{}_{}'.format(i, j)] = var
 
         self.edge_module_input_type = [tf.boolean_mask(tensor=self.edge_module_input, mask=self.node_types[:, i])
                                        for i in range(self.n_types)]
@@ -150,8 +149,7 @@ class Model(object):
                                                                                                              i,
                                                                                                              j)],
                                                                                                      dtype=tf.float32)))
-                    self.edge_loss.append(tf.sparse_tensor_to_dense(
-                        self.edge_mask['adj_{}_{}'.format(i, j)].__mul__(self.non_mask_loss[-1])))
+                    self.edge_loss.append(self.edge_mask['adj_{}_{}'.format(i, j)]*(self.non_mask_loss[-1]))
                     self.tmp2.append(tf.count_nonzero(self.edge_loss[-1]))
                     tmp = tf.reduce_mean(self.edge_loss[-1])
                     self.total_edge_loss += tmp
@@ -173,20 +171,161 @@ class Model(object):
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
-                    if i == j:
-                        labels = self.edge_labels['adj_{}_{}'.format(i, j)] + \
-                                 tf.transpose(self.edge_labels['adj_{}_{}'.format(i, j)])
-                    else:
-                        labels = self.edge_labels['adj_{}_{}'.format(i, j)]
-
+                    labels = self.edge_labels['adj_{}_{}'.format(i, j)]
                     self.edge_prediction.append(tf.cast(
                         tf.greater_equal(tf.nn.sigmoid(self.edge_logits['{}_{}'.format(i, j)]), 0.5),
                         dtype=tf.int32))
                     edge_prediction = self.edge_prediction[-1]
-                    true_positive += tf.count_nonzero(edge_prediction * labels)
-                    true_negative += tf.count_nonzero((edge_prediction - 1) * (labels - 1))
-                    false_positive += tf.count_nonzero(edge_prediction * (labels - 1))
-                    false_negative += tf.count_nonzero((edge_prediction - 1) * labels)
+                    mask = self.edge_mask['adj_{}_{}'.format(i, j)]
+                    true_positive += tf.count_nonzero(tf.cast(edge_prediction * labels, dtype=tf.float32) * mask)
+                    true_negative += tf.count_nonzero(tf.cast((edge_prediction - 1) * (labels - 1),
+                                                              dtype=tf.float32) * mask)
+                    false_positive += tf.count_nonzero(tf.cast(edge_prediction * (labels - 1), dtype=tf.float32) * mask)
+                    false_negative += tf.count_nonzero(tf.cast((edge_prediction - 1) * labels, dtype=tf.float32) * mask)
+
+        self.precision = true_positive / (true_positive + false_positive)
+        self.recall = true_positive / (true_positive + false_negative)
+        self.f1 = 2 * self.precision * self.recall / (self.precision + self.recall)
+
+
+class Model2(object):
+    def __init__(self, name, placeholders, num_nodes, super_mask, activation=tf.nn.tanh, bias=True):
+        self.name = name
+
+        # feature variables
+        self.n_nodes = num_nodes
+        self.num_features_nonzero = placeholders['num_features_nonzero']
+
+        # adjacency matrix
+        self.support = [placeholders['support0'], placeholders['support1'], placeholders['support2']]
+        self.edge_labels = placeholders['edge_labels']
+        self.edge_mask = placeholders['edge_mask']
+
+        # node type variables
+        self.n_types = len(self.support)
+
+        # network architectural settings
+        self.activation = activation
+        self.gc_dropout = placeholders['gc_dropout']
+        self.fc_dropout = placeholders['fc_dropout']
+        self.super_mask = super_mask
+        self.bias = bias
+
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
+        self.w = {}
+        self.layers = {}
+        self.h1 = {}
+        self.h2 = {}
+        self.edge_module_input_type = None
+        self.edge_logits = {}
+        self.edge_module_input = None
+        self.type_loss = 0
+        self.recall = 0
+        self.precision = 0
+        self.f1 = 0
+        self.total_edge_loss = 0
+        self.total_loss = 0
+
+        self.build()
+        self.loss()
+        self.precision_recall_f1()
+
+        self.opt = self.optimizer.minimize(self.total_loss)
+
+    def build(self):
+        for i in range(self.n_types):
+            type_placeholders = {
+                'support': self.support[i],
+                'dropout': self.gc_dropout,
+                'num_features_nonzero': self.num_features_nonzero
+            }
+            layers = []
+            layers.append(GraphConvolution(input_dim=self.n_nodes[i],
+                                           output_dim=FLAGS.hidden1,
+                                           placeholders=type_placeholders,
+                                           dropout=False,
+                                           act=self.activation,
+                                           bias=self.bias,
+                                           logging=True,
+                                           featureless=True
+                                           ))
+
+            layers.append(GraphConvolution(input_dim=FLAGS.hidden1,
+                                           output_dim=FLAGS.hidden2,
+                                           placeholders=type_placeholders,
+                                           dropout=False,
+                                           act=self.activation,
+                                           bias=self.bias,
+                                           logging=True,
+                                           ))
+            self.layers['{}'.format(i)] = layers
+            self.h1['{}'.format(i)] = layers[0](0.)
+            self.h2['{}'.format(i)] = layers[1](self.h1['{}'.format(i)])
+
+        with tf.variable_scope(self.name):
+            n_features = FLAGS.hidden2
+            for i in range(self.n_types):
+                for j in range(i, self.n_types):
+                    if self.super_mask[i][j]:
+                        var = glorot(shape=(n_features, n_features), name='w_{}_{}'.format(i, j))
+                        tf.summary.histogram(name='w_{}_{}'.format(i, j), values=var)
+                        self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
+                        # self.w['{}_{}'.format(i, j)] = var
+
+        self.edge_logits = dict()
+        for i in range(self.n_types):
+            for j in range(i, self.n_types):
+                if self.super_mask[i][j]:
+                    weight = self.w['{}_{}'.format(i, j)]
+                    self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(tf.matmul(self.h2['{}'.format(i)], weight)
+                                                                       , tf.transpose(self.h2['{}'.format(j)]))
+                    # self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(self.h2['{}'.format(i)],
+                    #                                                    tf.transpose(self.h2['{}'.format(j)]))
+
+    def loss(self):
+        self.total_edge_loss = 0
+        self.non_mask_loss = []
+        self.edge_loss = []
+        self.tmp2 = []
+        for i in range(self.n_types):
+            for j in range(i, self.n_types):
+                if self.super_mask[i][j]:
+                    self.non_mask_loss.append(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.edge_logits['{}_{}'
+                                                                                      .format(i, j)],
+                                                                                      labels=tf.cast(self.edge_labels[
+                                                                                                         'adj_{}_{}'.format(
+                                                                                                             i,
+                                                                                                             j)],
+                                                                                                     dtype=tf.float32)))
+                    self.edge_loss.append(self.edge_mask['adj_{}_{}'.format(i, j)]*(self.non_mask_loss[-1]))
+                    self.tmp2.append(tf.count_nonzero(self.edge_loss[-1]))
+                    tmp = tf.reduce_mean(self.edge_loss[-1])
+                    self.total_edge_loss += tmp
+
+        l2_reg = 0
+        for _, layers in self.layers.items():
+            for var in layers[0].vars.values():
+                l2_reg += tf.nn.l2_loss(var)
+
+        self.total_loss = self.total_edge_loss + FLAGS.weight_decay * l2_reg
+
+    def precision_recall_f1(self):
+        self.edge_prediction = []
+        true_positive = true_negative = false_positive = false_negative = 0
+        for i in range(self.n_types):
+            for j in range(i, self.n_types):
+                if self.super_mask[i][j]:
+                    labels = self.edge_labels['adj_{}_{}'.format(i, j)]
+                    self.edge_prediction.append(tf.cast(
+                        tf.greater_equal(tf.nn.sigmoid(self.edge_logits['{}_{}'.format(i, j)]), 0.5),
+                        dtype=tf.int32))
+                    edge_prediction = self.edge_prediction[-1]
+                    mask = self.edge_mask['adj_{}_{}'.format(i, j)]
+                    true_positive += tf.count_nonzero(tf.cast(edge_prediction * labels, dtype=tf.float32) * mask)
+                    true_negative += tf.count_nonzero(tf.cast((edge_prediction - 1) * (labels - 1),
+                                                              dtype=tf.float32) * mask)
+                    false_positive += tf.count_nonzero(tf.cast(edge_prediction * (labels - 1), dtype=tf.float32) * mask)
+                    false_negative += tf.count_nonzero(tf.cast((edge_prediction - 1) * labels, dtype=tf.float32) * mask)
 
         self.precision = true_positive / (true_positive + false_positive)
         self.recall = true_positive / (true_positive + false_negative)
