@@ -37,9 +37,9 @@ def make_one_hot(labels):
 
 
 def load_aminer():
-    fdf0 = pd.read_csv('./data/infra/infra.feat0', delimiter=' ', header=None)
-    fdf1 = pd.read_csv('./data/infra/infra.feat1', delimiter=' ', header=None)
-    fdf2 = pd.read_csv('./data/infra/infra.feat2', delimiter=' ', header=None)
+    fdf0 = pd.read_csv('./data/aminer/aminer.feat0', delimiter=' ', header=None)
+    fdf1 = pd.read_csv('./data/aminer/aminer.feat1', delimiter=' ', header=None)
+    fdf2 = pd.read_csv('./data/aminer/aminer.feat2', delimiter=' ', header=None)
 
     labels = np.concatenate((fdf0.values[:, -1], fdf1.values[:, -1], fdf2.values[:, -1]), axis=0)
     one_hot_labels = make_one_hot(labels)

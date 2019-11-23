@@ -9,7 +9,7 @@ from models import Model
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string('model', 'gcn_cheby', 'Model string.')  # 'kipf_gcn', 'cheby_gcn'
-flags.DEFINE_string('dataset', 'infra', 'Dataset string.')
+flags.DEFINE_string('dataset', 'aminer', 'Dataset string.')
 flags.DEFINE_float('learning_rate', 0.005, 'Initial learning rate.')
 flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
 flags.DEFINE_integer('hidden1', 32, 'Number of units in hidden layer 1.')
