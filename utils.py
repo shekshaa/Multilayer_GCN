@@ -12,15 +12,6 @@ def get_indices(df):
     return np.asarray(indices)
 
 
-def get_features(df):
-    features = []
-    for item in df.values:
-        s = item[0].split(' ')
-        row = [int(s[j]) for j in range(1, len(s))]
-        features.append(row)
-    return np.asarray(features)
-
-
 def make_sparse_matrix(indices, shape):
     data = np.ones(indices.shape[0])
     return sp.csr_matrix((data, (indices[:, 0], indices[:, 1])), shape=shape)
@@ -37,7 +28,22 @@ def make_node_types(n0, n1, n2):
     return one_hot_node_types
 
 
+def make_one_hot(labels):
+    max_label = np.max(labels)
+    n_nodes = labels.shape[0]
+    one_hot_labels = np.zeros((n_nodes, max_label))
+    one_hot_labels[np.arange(labels.shape[0]), labels - 1] = 1
+    return one_hot_labels
+
+
 def load_aminer():
+    fdf0 = pd.read_csv('./data/infra/infra.feat0', delimiter=' ', header=None)
+    fdf1 = pd.read_csv('./data/infra/infra.feat1', delimiter=' ', header=None)
+    fdf2 = pd.read_csv('./data/infra/infra.feat2', delimiter=' ', header=None)
+
+    labels = np.concatenate((fdf0.values[:, -1], fdf1.values[:, -1], fdf2.values[:, -1]), axis=0)
+    one_hot_labels = make_one_hot(labels)
+
     df0 = pd.read_csv('./data/aminer/aminer.adj0')
     df1 = pd.read_csv('./data/aminer/aminer.adj1')
     df2 = pd.read_csv('./data/aminer/aminer.adj2')
@@ -67,10 +73,19 @@ def load_aminer():
 
     node_types = make_node_types(n0, n1, n2)
 
+    features = np.concatenate((node_types, one_hot_labels), axis=1)
+
     return all_sub_adj, node_types
 
 
 def load_infra():
+    fdf0 = pd.read_csv('./data/infra/infra.feat0', delimiter=' ', header=None)
+    fdf1 = pd.read_csv('./data/infra/infra.feat1', delimiter=' ', header=None)
+    fdf2 = pd.read_csv('./data/infra/infra.feat2', delimiter=' ', header=None)
+
+    labels = np.concatenate((fdf0.values[:, -1], fdf1.values[:, -1], fdf2.values[:, -1]), axis=0)
+    one_hot_labels = make_one_hot(labels)
+
     df0 = pd.read_csv('./data/infra/infra.adj0')
     df1 = pd.read_csv('./data/infra/infra.adj1')
     df2 = pd.read_csv('./data/infra/infra.adj2')
@@ -104,7 +119,9 @@ def load_infra():
 
     node_types = make_node_types(n0, n1, n2)
 
-    return all_sub_adj, node_types
+    features = np.concatenate((node_types, one_hot_labels), axis=1)
+
+    return all_sub_adj, node_types, features
 
 
 def selection(mat, num_val, num_test, diagonal=False):
