@@ -128,9 +128,11 @@ class Model(object):
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
-                    weight = self.w['{}_{}'.format(i, j)]
-                    self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(tf.matmul(self.edge_module_input_type[i], weight)
-                                                                       , tf.transpose(self.edge_module_input_type[j]))
+                    # weight = self.w['{}_{}'.format(i, j)]
+                    # self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(tf.matmul(self.edge_module_input_type[i], weight)
+                    #                                                    , tf.transpose(self.edge_module_input_type[j]))
+                    self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(self.edge_module_input_type[i],
+                                                                       tf.transpose(self.edge_module_input_type[j]))
 
     def loss(self):
         self.type_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.node_type_logits,
@@ -276,11 +278,11 @@ class Model2(object):
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
-                    weight = self.w['{}_{}'.format(i, j)]
-                    self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(tf.matmul(self.h2['{}'.format(i)], weight)
-                                                                       , tf.transpose(self.h2['{}'.format(j)]))
-                    # self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(self.h2['{}'.format(i)],
-                    #                                                    tf.transpose(self.h2['{}'.format(j)]))
+                    # weight = self.w['{}_{}'.format(i, j)]
+                    # self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(tf.matmul(self.h2['{}'.format(i)], weight)
+                    #                                                    , tf.transpose(self.h2['{}'.format(j)]))
+                    self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(self.h2['{}'.format(i)],
+                                                                       tf.transpose(self.h2['{}'.format(j)]))
 
     def loss(self):
         self.total_edge_loss = 0
