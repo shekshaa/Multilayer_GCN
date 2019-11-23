@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from gcn.utils import sparse_to_tuple
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import average_precision_score
 
 
 def get_indices(df):
@@ -194,6 +196,10 @@ def load_train_val_test(adj, diagonal=False):
     print('test')
     test_mask = masking(test_edges, test_false_edges, n_total, n_edges, shape=adj.shape)
 
+    train_mask = train_mask.todense()
+    val_mask = val_mask.todense()
+    test_mask = test_mask.todense()
+
     data = np.ones(train_edges.shape[0])
     adj_train = sp.csr_matrix((data, (train_edges[:, 0], train_edges[:, 1])), shape=adj.shape)
     if diagonal:
@@ -207,14 +213,11 @@ def load_train_val_test2(all_sub_adj):
     sub_train_mask = {}
     sub_val_mask = {}
     sub_test_mask = {}
-
     for key, adj in all_sub_adj.items():
         print(key)
         sub_adj_train[key], sub_train_mask[key], sub_val_mask[key], sub_test_mask[key] = load_train_val_test(adj,
                                                                                                              diagonal=(
-                                                                                                                 key[
-                                                                                                                     -1] ==
-                                                                                                                 key[
-                                                                                                                     -3]))
+                                                                                                             key[-1] ==
+                                                                                                             key[-3]))
 
     return sub_adj_train, sub_train_mask, sub_val_mask, sub_test_mask
