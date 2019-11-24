@@ -37,6 +37,8 @@ class WeightedAutoencoder(object):
 
         # initialization of model variables
         self.optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
+        self.h1 = None
+        self.h2 = None
         self.w = {}
         self.layers = []
         self.node_type_logits = None
@@ -85,15 +87,15 @@ class WeightedAutoencoder(object):
                                             bias=self.bias,
                                             logging=True))
 
-        h1 = self.layers[0](self.features)
-        h2 = self.layers[1](h1)
+        self.h1 = self.layers[0](self.features)
+        self.h2 = self.layers[1](self.h1)
 
         type_fd_placeholders = {
             'support': self.support,
             'dropout': self.node_gc_dropout,
             'num_features_nonzero': self.num_features_nonzero
         }
-        self.node_type_module_input = h2
+        self.node_type_module_input = self.h2
 
         self.layers.append(GraphConvolution(input_dim=FLAGS.hidden2,
                                             output_dim=self.n_types,
@@ -105,7 +107,7 @@ class WeightedAutoencoder(object):
 
         self.node_type_logits = self.layers[2](self.node_type_module_input)
 
-        self.edge_module_input = h2
+        self.edge_module_input = self.h2
         with tf.variable_scope(self.name):
             n_features = self.edge_module_input.get_shape().as_list()[1]
             for i in range(self.n_types):
