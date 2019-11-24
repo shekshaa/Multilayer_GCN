@@ -6,7 +6,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 
-class Model(object):
+class WeightedAutoencoder(object):
     def __init__(self, name, placeholders, num_nodes, super_mask, use_weight,
                  featureless=True, activation=tf.nn.tanh, bias=True):
         self.name = name
@@ -180,7 +180,7 @@ class Model(object):
         self.f1 = 2 * self.precision * self.recall / (self.precision + self.recall)
 
 
-class Model2(object):
+class ParallelGCN(object):
     def __init__(self, name, placeholders, num_nodes, super_mask, use_weight, activation=tf.nn.tanh, bias=True):
         self.name = name
 

@@ -2,7 +2,7 @@ import tensorflow as tf
 from gcn.utils import preprocess_adj, chebyshev_polynomials
 from datetime import datetime
 from utils import load_train_val_test2, load_infra, load_aminer
-from models import Model2
+from models import ParallelGCN
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -12,7 +12,6 @@ flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
 flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
 flags.DEFINE_integer('hidden1', 32, 'Number of units in hidden layer 1.')
 flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
-flags.DEFINE_float('fc_dropout', 0., 'Dropout rate (1 - keep probability).')
 flags.DEFINE_float('gc_dropout', 0., 'Dropout rate (1 - keep probability).')
 flags.DEFINE_integer('use_weight', 1, 'use w_ij')
 flags.DEFINE_float('weight_decay', 5e-4, 'Weight for L2 loss on embedding matrix.')
@@ -58,11 +57,11 @@ placeholders = {
     'num_features_nonzero': tf.placeholder(tf.int32),
 }
 
-model = Model2(name='Multilayer_GCN',
-               placeholders=placeholders,
-               num_nodes=n_nodes,
-               super_mask=super_mask,
-               use_weight=FLAGS.use_weight)
+model = ParallelGCN(name='Multilayer_GCN',
+                    placeholders=placeholders,
+                    num_nodes=n_nodes,
+                    super_mask=super_mask,
+                    use_weight=FLAGS.use_weight)
 
 print("Model Created!")
 
@@ -105,7 +104,6 @@ for epoch in range(FLAGS.epochs):
     print('Epoch {}'.format(epoch + 1))
     print('Train: loss={:.3f}'.format(train_loss))
     print('Val: loss={:.3f}, edge_f1={:.3f}'.format(val_loss, val_f1))
-
 
 feed_dict[placeholders['gc_dropout']] = 0.
 feed_dict[placeholders['fc_dropout']] = 0.

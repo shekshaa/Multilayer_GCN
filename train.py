@@ -4,7 +4,7 @@ from gcn.utils import preprocess_adj, chebyshev_polynomials
 import scipy.sparse as sp
 from datetime import datetime
 from utils import load_train_val_test2, load_infra, load_aminer
-from models import Model
+from models import WeightedAutoencoder
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -69,12 +69,12 @@ placeholders = {
     'num_features_nonzero': tf.placeholder(tf.int32),
 }
 
-model = Model(name='Multilayer_GCN',
-              placeholders=placeholders,
-              num_nodes=train_adj.shape[0],
-              super_mask=super_mask,
-              use_weight=FLAGS.use_weight,
-              featureless=FLAGS.featureless)
+model = WeightedAutoencoder(name='Multilayer_GCN',
+                            placeholders=placeholders,
+                            num_nodes=train_adj.shape[0],
+                            super_mask=super_mask,
+                            use_weight=FLAGS.use_weight,
+                            featureless=FLAGS.featureless)
 
 print("Model Created!")
 
@@ -98,8 +98,8 @@ feed_dict.update({placeholders['support'][i]: support[i] for i in range(len(supp
 feed_dict.update({placeholders['edge_labels'][key]: value.todense() for key, value in all_sub_adj.items()})
 
 for epoch in range(FLAGS.epochs):
-    feed_dict[placeholders['base_gc_dropout']] = FLAGS.gc_dropout
-    feed_dict[placeholders['node_gc_dropout']] = FLAGS.fc_dropout
+    feed_dict[placeholders['base_gc_dropout']] = FLAGS.base_gc_dropout
+    feed_dict[placeholders['node_gc_dropout']] = FLAGS.node_gc_dropout
     feed_dict.update({placeholders['edge_mask'][key]: value for key, value in train_mask.items()})
 
     sess.run(model.opt, feed_dict=feed_dict)
