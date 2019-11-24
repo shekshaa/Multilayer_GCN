@@ -2,6 +2,19 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from gcn.utils import sparse_to_tuple
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+
+
+def visualize_embedding(embedding, labels):
+    transformed = TSNE(n_components=2).fit_transform(embedding)
+    colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+    node_colors = []
+    n_nodes = labels.shape[0]
+    for i in range(n_nodes):
+        node_colors.append(colors[labels[i]])
+    plt.scatter(transformed[:, 0], transformed[:, 1], c=node_colors, s=10)
+    plt.show()
 
 
 def get_indices(df):
@@ -75,7 +88,7 @@ def load_aminer():
 
     features = np.concatenate((node_types, one_hot_labels), axis=1)
 
-    return all_sub_adj, node_types, features
+    return all_sub_adj, node_types, features, labels
 
 
 def load_infra():
@@ -121,7 +134,7 @@ def load_infra():
 
     features = np.concatenate((node_types, one_hot_labels), axis=1)
 
-    return all_sub_adj, node_types, features
+    return all_sub_adj, node_types, features, labels
 
 
 def selection(mat, num_val, num_test, diagonal=False):
