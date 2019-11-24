@@ -53,7 +53,6 @@ placeholders = {
     'edge_labels': {key: tf.placeholder(tf.int32) for key, __ in all_sub_adj.items()},
     'edge_mask': {key: tf.placeholder(tf.float32) for key, ___ in train_mask.items()},
     'gc_dropout': tf.placeholder_with_default(0., shape=()),
-    'fc_dropout': tf.placeholder_with_default(0., shape=()),
     'num_features_nonzero': tf.placeholder(tf.int32),
 }
 
@@ -87,7 +86,6 @@ feed_dict.update({placeholders['edge_labels'][key]: value.todense() for key, val
 
 for epoch in range(FLAGS.epochs):
     feed_dict[placeholders['gc_dropout']] = FLAGS.gc_dropout
-    feed_dict[placeholders['fc_dropout']] = FLAGS.fc_dropout
     feed_dict.update({placeholders['edge_mask'][key]: value for key, value in train_mask.items()})
 
     sess.run(model.opt, feed_dict=feed_dict)
@@ -96,7 +94,6 @@ for epoch in range(FLAGS.epochs):
     writer.add_summary(summary, global_step=epoch + 1)
 
     feed_dict[placeholders['gc_dropout']] = 0.
-    feed_dict[placeholders['fc_dropout']] = 0.
     feed_dict.update({placeholders['edge_mask'][key]: value for key, value in val_mask.items()})
 
     val_loss, val_f1 = sess.run([model.total_loss, model.f1], feed_dict=feed_dict)
@@ -106,7 +103,6 @@ for epoch in range(FLAGS.epochs):
     print('Val: loss={:.3f}, edge_f1={:.3f}'.format(val_loss, val_f1))
 
 feed_dict[placeholders['gc_dropout']] = 0.
-feed_dict[placeholders['fc_dropout']] = 0.
 feed_dict.update({placeholders['edge_mask'][key]: value for key, value in test_mask.items()})
 
 test_loss, test_f1 = sess.run([model.total_loss, model.f1], feed_dict=feed_dict)
