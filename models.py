@@ -7,17 +7,17 @@ FLAGS = flags.FLAGS
 
 
 class Model(object):
-    def __init__(self, name, placeholders, num_nodes, num_features, super_mask, use_weight,
-                 activation=tf.nn.tanh, bias=True):
+    def __init__(self, name, placeholders, num_nodes, super_mask, use_weight,
+                 featureless=True, activation=tf.nn.tanh, bias=True):
         self.name = name
 
         # feature variables
-        self.n_features = num_features
         self.n_nodes = num_nodes
+        self.n_features = num_nodes if featureless else placeholders['features'].get_shape().as_list[1]
+        self.features = 0. if featureless else placeholders['features']
         self.num_features_nonzero = placeholders['num_features_nonzero']
 
         # adjacency matrix
-        self.features = placeholders['features']
         self.support = placeholders['support']
         self.edge_labels = placeholders['edge_labels']
         self.edge_mask = placeholders['edge_mask']
@@ -29,11 +29,13 @@ class Model(object):
         # network architectural settings
         self.use_weight = use_weight
         self.activation = activation
-        self.gc_dropout = placeholders['gc_dropout']
-        self.fc_dropout = placeholders['fc_dropout']
+        self.base_gc_dropout = placeholders['base_gc_dropout']
+        self.node_gc_dropout = placeholders['node_gc_dropout']
         self.super_mask = super_mask
+        self.featureless = featureless
         self.bias = bias
 
+        # initialization of model variables
         self.optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
         self.w = {}
         self.layers = []
@@ -50,6 +52,7 @@ class Model(object):
         self.total_edge_loss = 0
         self.total_loss = 0
 
+        # build inference mode and loss and accuracy
         self.build()
         self.loss()
         self.acc()
@@ -60,29 +63,19 @@ class Model(object):
     def build(self):
         layer_placeholders = {
             'support': self.support,
-            'dropout': self.gc_dropout,
+            'dropout': self.base_gc_dropout,
             'num_features_nonzero': self.num_features_nonzero
         }
 
-        self.layers.append(GraphConvolution(input_dim=self.n_nodes,
+        self.layers.append(GraphConvolution(input_dim=self.n_features,
                                             output_dim=FLAGS.hidden1,
                                             placeholders=layer_placeholders,
                                             dropout=False,
                                             act=self.activation,
                                             bias=self.bias,
                                             logging=True,
-                                            featureless=True
+                                            featureless=self.featureless
                                             ))
-
-        # self.layers.append(GraphConvolution(input_dim=self.n_features,
-        #                                     output_dim=FLAGS.hidden1,
-        #                                     placeholders=layer_placeholders,
-        #                                     dropout=False,
-        #                                     act=self.activation,
-        #                                     bias=self.bias,
-        #                                     logging=True,
-        #                                     # featureless=True
-        #                                     ))
 
         self.layers.append(GraphConvolution(input_dim=FLAGS.hidden1,
                                             output_dim=FLAGS.hidden2,
@@ -92,13 +85,12 @@ class Model(object):
                                             bias=self.bias,
                                             logging=True))
 
-        # h1 = self.layers[0](self.features)
-        h1 = self.layers[0](0.)
+        h1 = self.layers[0](self.features)
         h2 = self.layers[1](h1)
 
         type_fd_placeholders = {
             'support': self.support,
-            'dropout': self.fc_dropout,
+            'dropout': self.node_gc_dropout,
             'num_features_nonzero': self.num_features_nonzero
         }
         self.node_type_module_input = h2
@@ -240,25 +232,23 @@ class Model2(object):
                 'dropout': self.gc_dropout,
                 'num_features_nonzero': self.num_features_nonzero
             }
-            layers = []
-            layers.append(GraphConvolution(input_dim=self.n_nodes[i],
-                                           output_dim=FLAGS.hidden1,
-                                           placeholders=type_placeholders,
-                                           dropout=False,
-                                           act=self.activation,
-                                           bias=self.bias,
-                                           logging=True,
-                                           featureless=True
-                                           ))
+            layers = [GraphConvolution(input_dim=self.n_nodes[i],
+                                       output_dim=FLAGS.hidden1,
+                                       placeholders=type_placeholders,
+                                       dropout=False,
+                                       act=self.activation,
+                                       bias=self.bias,
+                                       logging=True,
+                                       featureless=True
+                                       ), GraphConvolution(input_dim=FLAGS.hidden1,
+                                                           output_dim=FLAGS.hidden2,
+                                                           placeholders=type_placeholders,
+                                                           dropout=False,
+                                                           act=self.activation,
+                                                           bias=self.bias,
+                                                           logging=True,
+                                                           )]
 
-            layers.append(GraphConvolution(input_dim=FLAGS.hidden1,
-                                           output_dim=FLAGS.hidden2,
-                                           placeholders=type_placeholders,
-                                           dropout=False,
-                                           act=self.activation,
-                                           bias=self.bias,
-                                           logging=True,
-                                           ))
             self.layers['{}'.format(i)] = layers
             self.h1['{}'.format(i)] = layers[0](0.)
             self.h2['{}'.format(i)] = layers[1](self.h1['{}'.format(i)])
@@ -271,7 +261,6 @@ class Model2(object):
                         var = glorot(shape=(n_features, n_features), name='w_{}_{}'.format(i, j))
                         tf.summary.histogram(name='w_{}_{}'.format(i, j), values=var)
                         self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
-                        # self.w['{}_{}'.format(i, j)] = var
 
         self.edge_logits = dict()
         for i in range(self.n_types):

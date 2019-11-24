@@ -56,10 +56,6 @@ def load_aminer():
     n1 = np.max(adj1_indices, axis=0)[0] + 1
     n2 = np.max(adj2_indices, axis=0)[0] + 1
 
-    print(n0)
-    print(n1)
-    print(n2)
-
     adj0 = make_sparse_matrix(adj0_indices, (n0, n0))
     adj1 = make_sparse_matrix(adj1_indices, (n1, n1))
     adj2 = make_sparse_matrix(adj2_indices, (n2, n2))
@@ -106,10 +102,6 @@ def load_infra():
     n1 = np.max(adj1_indices, axis=0)[0] + 1
     n2 = np.max(adj2_indices, axis=0)[0] + 1
 
-    print(n0)
-    print(n1)
-    print(n2)
-
     adj0 = make_sparse_matrix(adj0_indices, (n0, n0))
     adj1 = make_sparse_matrix(adj1_indices, (n1, n1))
     adj2 = make_sparse_matrix(adj2_indices, (n2, n2))
@@ -154,10 +146,6 @@ def selection(mat, num_val, num_test, diagonal=False):
 
 
 def masking(true_indices, false_indices, n_total, n_edges, shape):
-    print('true:', true_indices.shape[0])
-    print('false:', false_indices.shape[0])
-    print(float(n_total) / n_edges)
-    print(float(n_total) / (n_total - n_edges))
     true_data = np.ones(true_indices.shape[0], dtype=float) * (float(n_total) / n_edges)
     true_mask = sp.csr_matrix((true_data, (true_indices[:, 0], true_indices[:, 1])), shape=shape)
 
@@ -185,17 +173,11 @@ def load_train_val_test(adj, diagonal=False):
 
     num_val = int(edges.nonzero()[0].shape[0] * 0.05)
     num_test = int(edges.nonzero()[0].shape[0] * 0.1)
-    print(edges.nonzero()[0].shape[0])
-    print(num_val)
-    print(num_test)
     train_edges, val_edges, test_edges = selection(edges, num_val, num_test, diagonal=diagonal)
     train_false_edges, val_false_edges, test_false_edges = selection(non_edges, num_val, num_test, diagonal=diagonal)
 
-    print('train')
     train_mask = masking(train_edges, train_false_edges, n_total, n_edges, shape=adj.shape)
-    print('val')
     val_mask = masking(val_edges, val_false_edges, n_total, n_edges, shape=adj.shape)
-    print('test')
     test_mask = masking(test_edges, test_false_edges, n_total, n_edges, shape=adj.shape)
 
     train_mask = train_mask.todense()
@@ -216,7 +198,6 @@ def load_train_val_test2(all_sub_adj):
     sub_val_mask = {}
     sub_test_mask = {}
     for key, adj in all_sub_adj.items():
-        print(key)
         sub_adj_train[key], sub_train_mask[key], sub_val_mask[key], sub_test_mask[key] = load_train_val_test(adj,
                                                                                                              diagonal=(
                                                                                                              key[-1] ==

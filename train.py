@@ -14,11 +14,11 @@ flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
 flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
 flags.DEFINE_integer('hidden1', 32, 'Number of units in hidden layer 1.')
 flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
-flags.DEFINE_integer('hidden3', 128, 'Number of units in hidden layer 3.')
-flags.DEFINE_float('fc_dropout', 0., 'Dropout rate (1 - keep probability).')
-flags.DEFINE_float('gc_dropout', 0., 'Dropout rate (1 - keep probability).')
+flags.DEFINE_float('node_gc_dropout', 0., 'Dropout rate (1 - keep probability).')
+flags.DEFINE_float('base_gc_dropout', 0., 'Dropout rate (1 - keep probability).')
 flags.DEFINE_integer('use_weight', 1, 'use w_ij')
 flags.DEFINE_float('weight_decay', 5e-4, 'Weight for L2 loss on embedding matrix.')
+flags.DEFINE_integer('featureless', 1, 'featureless')
 flags.DEFINE_float('lmbda', 0., 'Weight for type classification loss term')
 flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of epochs).')
 flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
@@ -64,17 +64,17 @@ placeholders = {
     'edge_labels': {key: tf.placeholder(tf.int32) for key, __ in all_sub_adj.items()},
     'edge_mask': {key: tf.placeholder(tf.float32) for key, ___ in train_mask.items()},
     'node_types': tf.placeholder(tf.int32, shape=[n_nodes, n_types]),
-    'gc_dropout': tf.placeholder_with_default(0., shape=()),
-    'fc_dropout': tf.placeholder_with_default(0., shape=()),
+    'base_gc_dropout': tf.placeholder_with_default(0., shape=()),
+    'node_gc_dropout': tf.placeholder_with_default(0., shape=()),
     'num_features_nonzero': tf.placeholder(tf.int32),
 }
 
 model = Model(name='Multilayer_GCN',
               placeholders=placeholders,
               num_nodes=train_adj.shape[0],
-              num_features=n_features,
               super_mask=super_mask,
-              use_weight=FLAGS.use_weight)
+              use_weight=FLAGS.use_weight,
+              featureless=FLAGS.featureless)
 
 print("Model Created!")
 
@@ -98,8 +98,8 @@ feed_dict.update({placeholders['support'][i]: support[i] for i in range(len(supp
 feed_dict.update({placeholders['edge_labels'][key]: value.todense() for key, value in all_sub_adj.items()})
 
 for epoch in range(FLAGS.epochs):
-    feed_dict[placeholders['gc_dropout']] = FLAGS.gc_dropout
-    feed_dict[placeholders['fc_dropout']] = FLAGS.fc_dropout
+    feed_dict[placeholders['base_gc_dropout']] = FLAGS.gc_dropout
+    feed_dict[placeholders['node_gc_dropout']] = FLAGS.fc_dropout
     feed_dict.update({placeholders['edge_mask'][key]: value for key, value in train_mask.items()})
 
     sess.run(model.opt, feed_dict=feed_dict)
@@ -109,20 +109,24 @@ for epoch in range(FLAGS.epochs):
 
     writer.add_summary(summary, global_step=epoch + 1)
 
-    feed_dict[placeholders['gc_dropout']] = 0.
-    feed_dict[placeholders['fc_dropout']] = 0.
+    feed_dict[placeholders['base_gc_dropout']] = 0.
+    feed_dict[placeholders['node_gc_dropout']] = 0.
     feed_dict.update({placeholders['edge_mask'][key]: value for key, value in val_mask.items()})
 
     val_type_acc, val_edge_f1, val_loss = sess.run([model.type_acc, model.precision, model.total_loss],
                                                    feed_dict=feed_dict)
 
     print('Epoch {}'.format(epoch + 1))
-    print('Train: loss={:.3f}, type_acc={:.3f}'.format(train_loss, train_type_acc))
-    print('Val: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(val_loss, val_type_acc, val_edge_f1))
+    if FLAGS.lmbda > 0:
+        print('Train: loss={:.3f}, type_acc={:.3f}'.format(train_loss, train_type_acc))
+        print('Val: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(val_loss, val_type_acc, val_edge_f1))
+    else:
+        print('Train: loss={:.3f}'.format(train_loss))
+        print('Val: loss={:.3f}, edge_f1={:.3f}'.format(val_loss, val_edge_f1))
     print('--------')
 
-feed_dict[placeholders['gc_dropout']] = 0.
-feed_dict[placeholders['fc_dropout']] = 0.
+feed_dict[placeholders['base_gc_dropout']] = 0.
+feed_dict[placeholders['node_gc_dropout']] = 0.
 feed_dict.update({placeholders['edge_mask'][key]: value for key, value in test_mask.items()})
 
 test_type_acc, test_edge_f1, test_loss = sess.run([model.type_acc, model.precision, model.total_loss],
