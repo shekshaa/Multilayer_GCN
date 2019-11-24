@@ -3,7 +3,7 @@ import numpy as np
 from gcn.utils import preprocess_adj, chebyshev_polynomials
 import scipy.sparse as sp
 from datetime import datetime
-from utils import load_train_val_test2, load_infra, load_aminer
+from utils import load_train_val_test2, load_infra, load_aminer, visualize_embedding
 from models import WeightedAutoencoder
 
 flags = tf.app.flags
@@ -24,7 +24,7 @@ flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of e
 flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
 
 if FLAGS.dataset == 'infra':
-    all_sub_adj, node_types, features = load_infra()
+    all_sub_adj, node_types, features, labels = load_infra()
     train_adj, train_mask, val_mask, test_mask = load_train_val_test2(all_sub_adj)
     r0 = sp.hstack((train_adj['adj_0_0'], train_adj['adj_0_1'], train_adj['adj_0_2']), format="csr")
     r1 = sp.hstack((train_adj['adj_0_1'].transpose(), train_adj['adj_1_1'], train_adj['adj_1_2']), format="csr")
@@ -32,7 +32,7 @@ if FLAGS.dataset == 'infra':
                    format="csr")
     super_mask = [[1, 1, 1], [0, 1, 1], [0, 0, 1]]
 else:
-    all_sub_adj, node_types, features = load_aminer()
+    all_sub_adj, node_types, features, labels = load_aminer()
     train_adj, train_mask, val_mask, test_mask = load_train_val_test2(all_sub_adj)
     n2 = train_adj['adj_0_2'].shape[1]
     n1 = train_adj['adj_0_1'].shape[1]
@@ -132,5 +132,12 @@ feed_dict.update({placeholders['edge_mask'][key]: value for key, value in test_m
 test_type_acc, test_edge_f1, test_loss = sess.run([model.type_acc, model.precision, model.total_loss],
                                                   feed_dict=feed_dict)
 print('Test: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(test_loss, test_type_acc, test_edge_f1))
+feed_dict = dict()
+
+feed_dict[placeholders['features']] = features
+feed_dict[placeholders['num_features_nonzero']] = 0.
+feed_dict.update({placeholders['support'][i]: support[i] for i in range(len(support))})
+embedding = sess.run(model.h2, feed_dict=feed_dict)
+visualize_embedding(embedding, labels)
 
 sess.close()
