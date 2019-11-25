@@ -59,6 +59,7 @@ class WeightedAutoencoder(object):
         self.loss()
         self.acc()
         self.precision_recall_f1()
+        self.summary1, self.summary2 = self.create_summary()
 
         self.opt = self.optimizer.minimize(self.total_loss)
 
@@ -155,6 +156,18 @@ class WeightedAutoencoder(object):
             l2_reg += tf.nn.l2_loss(var)
 
         self.total_loss = FLAGS.lmbda * self.type_loss + self.total_edge_loss + FLAGS.weight_decay * l2_reg
+
+    def create_summary(self):
+        summary1_list = [tf.summary.scalar(name='node_type_loss', values=self.type_loss),
+                         tf.summary.scalar(name='total_edge_loss', values=self.total_edge_loss),
+                         tf.summary.scalar(name='total_loss', values=self.total_loss)]
+        if FLAGS.lmbda > 0:
+            summary1_list += [tf.summary.scalar(name='node_type_loss', values=self.type_loss),
+                              tf.summary.scalar(name='node_type_acc', values=self.type_acc)]
+        summary2_list = [tf.summary.scalar(name='precision', values=self.precision),
+                         tf.summary.scalar(name='recall', values=self.recall),
+                         tf.summary.scalar(name='F1', values=self.f1)]
+        return tf.summary.merge(summary1_list), tf.summary.merge(summary2_list)
 
     def acc(self):
         type_correct_predictions = tf.equal(tf.argmax(self.node_type_logits, 1),
@@ -304,7 +317,7 @@ class ParallelGCN(object):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
                     labels = self.edge_labels['adj_{}_{}'.format(i, j)]
-                    edge_prediction= tf.cast(
+                    edge_prediction = tf.cast(
                         tf.greater_equal(tf.nn.sigmoid(self.edge_logits['{}_{}'.format(i, j)]), 0.5),
                         dtype=tf.int32)
                     mask = self.edge_mask['adj_{}_{}'.format(i, j)]

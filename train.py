@@ -87,8 +87,8 @@ sess.run(tf.global_variables_initializer())
 now = datetime.now()
 now_time = now.time()
 save_path = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute) + ":" + str(now_time.second)
-merged_summary = tf.summary.merge_all()
-writer = tf.summary.FileWriter(logdir='./log/{}/'.format(save_path))
+train_writer = tf.summary.FileWriter(logdir='./log/{}/train/'.format(save_path))
+val_writer = tf.summary.FileWriter(logdir='./log/{}/val/'.format(save_path))
 
 feed_dict = dict()
 feed_dict[placeholders['features']] = features
@@ -104,18 +104,22 @@ for epoch in range(FLAGS.epochs):
 
     sess.run(model.opt, feed_dict=feed_dict)
 
-    summary, train_type_acc, train_edge_f1, train_loss = sess.run(
-        [merged_summary, model.type_acc, model.precision, model.total_loss], feed_dict=feed_dict)
+    train_summary, train_type_acc, train_edge_f1, train_loss = sess.run(
+        [model.summary1, model.type_acc, model.precision, model.total_loss], feed_dict=feed_dict)
 
-    writer.add_summary(summary, global_step=epoch + 1)
+    train_writer.add_summary(train_summary, global_step=epoch + 1)
 
     feed_dict[placeholders['base_gc_dropout']] = 0.
     feed_dict[placeholders['node_gc_dropout']] = 0.
     feed_dict.update({placeholders['edge_mask'][key]: value for key, value in val_mask.items()})
 
-    val_type_acc, val_edge_f1, val_loss = sess.run([model.type_acc, model.precision, model.total_loss],
-                                                   feed_dict=feed_dict)
+    val_summary1, val_summary2, val_type_acc, val_edge_f1, val_loss = sess.run(
+        [model.summary1, model.summary2, model.type_acc,
+         model.precision, model.total_loss],
+        feed_dict=feed_dict)
 
+    val_writer.add_summary(val_summary1, global_step=epoch + 1)
+    val_writer.add_summary(val_summary2, global_step=epoch + 1)
     print('Epoch {}'.format(epoch + 1))
     if FLAGS.lmbda > 0:
         print('Train: loss={:.3f}, type_acc={:.3f}'.format(train_loss, train_type_acc))
