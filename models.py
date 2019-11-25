@@ -13,7 +13,7 @@ class WeightedAutoencoder(object):
 
         # feature variables
         self.n_nodes = num_nodes
-        self.n_features = num_nodes if featureless else placeholders['features'].get_shape().as_list[1]
+        self.n_features = num_nodes if featureless else placeholders['features'].get_shape().as_list()[1]
         self.features = 0. if featureless else placeholders['features']
         self.num_features_nonzero = placeholders['num_features_nonzero']
 
