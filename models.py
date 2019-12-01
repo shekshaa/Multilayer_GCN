@@ -116,7 +116,8 @@ class WeightedAutoencoder(object):
                     if self.super_mask[i][j]:
                         var = glorot(shape=(n_features, n_features), name='w_{}_{}'.format(i, j))
                         tf.summary.histogram(name='w_{}_{}'.format(i, j), values=var)
-                        self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
+                        # self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
+                        self.w['{}_{}'.format(i, j)] = var
 
         self.edge_module_input_type = [tf.boolean_mask(tensor=self.edge_module_input, mask=self.node_types[:, i])
                                        for i in range(self.n_types)]
@@ -158,15 +159,15 @@ class WeightedAutoencoder(object):
         self.total_loss = FLAGS.lmbda * self.type_loss + self.total_edge_loss + FLAGS.weight_decay * l2_reg
 
     def create_summary(self):
-        summary1_list = [tf.summary.scalar(name='node_type_loss', values=self.type_loss),
-                         tf.summary.scalar(name='total_edge_loss', values=self.total_edge_loss),
-                         tf.summary.scalar(name='total_loss', values=self.total_loss)]
+        summary1_list = [tf.summary.scalar(name='node_type_loss', tensor=self.type_loss),
+                         tf.summary.scalar(name='total_edge_loss', tensor=self.total_edge_loss),
+                         tf.summary.scalar(name='total_loss', tensor=self.total_loss)]
         if FLAGS.lmbda > 0:
-            summary1_list += [tf.summary.scalar(name='node_type_loss', values=self.type_loss),
-                              tf.summary.scalar(name='node_type_acc', values=self.type_acc)]
-        summary2_list = [tf.summary.scalar(name='precision', values=self.precision),
-                         tf.summary.scalar(name='recall', values=self.recall),
-                         tf.summary.scalar(name='F1', values=self.f1)]
+            summary1_list += [tf.summary.scalar(name='node_type_loss', tensor=self.type_loss),
+                              tf.summary.scalar(name='node_type_acc', tensor=self.type_acc)]
+        summary2_list = [tf.summary.scalar(name='precision', tensor=self.precision),
+                         tf.summary.scalar(name='recall', tensor=self.recall),
+                         tf.summary.scalar(name='F1', tensor=self.f1)]
         return tf.summary.merge(summary1_list), tf.summary.merge(summary2_list)
 
     def acc(self):
