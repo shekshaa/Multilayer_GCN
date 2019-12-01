@@ -88,7 +88,7 @@ sess.run(tf.global_variables_initializer())
 
 now = datetime.now()
 now_time = now.time()
-save_path = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute)
+save_path = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute) + "_w" + str(FLAGS.use_weight)
 train_writer = tf.summary.FileWriter(logdir='./log/Autoencoder/{}/train/'.format(save_path))
 val_writer = tf.summary.FileWriter(logdir='./log/Autoencoder/{}/val/'.format(save_path))
 
