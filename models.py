@@ -219,7 +219,6 @@ class ParallelGCN(object):
         self.use_weight = use_weight
         self.activation = activation
         self.gc_dropout = placeholders['gc_dropout']
-        self.fc_dropout = placeholders['fc_dropout']
         self.super_mask = super_mask
         self.bias = bias
 
