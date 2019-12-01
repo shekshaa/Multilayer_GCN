@@ -9,24 +9,25 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('model', 'gcn', 'Model string.')  # 'kipf_gcn', 'cheby_gcn'
 flags.DEFINE_string('dataset', 'infra', 'Dataset string.')
 flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
-flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
+flags.DEFINE_integer('epochs', 100, 'Number of epochs to train.')
 flags.DEFINE_integer('hidden1', 32, 'Number of units in hidden layer 1.')
 flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
 flags.DEFINE_float('gc_dropout', 0., 'Dropout rate (1 - keep probability).')
 flags.DEFINE_integer('use_weight', 1, 'use w_ij')
 flags.DEFINE_float('weight_decay', 5e-4, 'Weight for L2 loss on embedding matrix.')
-flags.DEFINE_float('lmbda', 0., 'Weight for type classification loss term')
+flags.DEFINE_integer('featureless', 1, 'featureless')
+flags.DEFINE_float('lmbda', 0., 'Weight for label classification loss term')
 flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of epochs).')
 flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
 
 if FLAGS.dataset == 'infra':
-    all_sub_adj, _, _, _ = load_infra()
+    all_sub_adj, node_types, features, one_hot_labels = load_infra()
     train_adj, train_mask, val_mask, test_mask = load_train_val_test2(all_sub_adj)
     train_adj = [train_adj['adj_{}_{}'.format(0, 0)], train_adj['adj_{}_{}'.format(1, 1)],
                  train_adj['adj_{}_{}'.format(2, 2)]]
     super_mask = [[1, 1, 1], [0, 1, 1], [0, 0, 1]]
 else:
-    all_sub_adj, _, _, _ = load_aminer()
+    all_sub_adj, node_types, features, one_hot_labels = load_aminer()
     train_adj, train_mask, val_mask, test_mask = load_train_val_test2(all_sub_adj)
     train_adj = [train_adj['adj_{}_{}'.format(0, 0)], train_adj['adj_{}_{}'.format(1, 1)],
                  train_adj['adj_{}_{}'.format(2, 2)]]
@@ -72,10 +73,9 @@ sess.run(tf.global_variables_initializer())
 
 now = datetime.now()
 now_time = now.time()
-save_path = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute) + ":" + str(now_time.second)
-merged_summary = tf.summary.merge_all()
-writer = tf.summary.FileWriter(logdir='./log/{}/'.format(save_path))
-writer.add_graph(graph=tf.get_default_graph())
+save_path = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute) + "_w" + str(FLAGS.use_weight)
+train_writer = tf.summary.FileWriter(logdir='./log/Parallel/{}/train/'.format(save_path))
+val_writer = tf.summary.FileWriter(logdir='./log/Parallel/{}/val/'.format(save_path))
 
 feed_dict = dict()
 feed_dict[placeholders['num_features_nonzero']] = 0.
@@ -90,13 +90,17 @@ for epoch in range(FLAGS.epochs):
 
     sess.run(model.opt, feed_dict=feed_dict)
 
-    summary, train_loss, train_f1 = sess.run([merged_summary, model.total_loss, model.f1], feed_dict=feed_dict)
-    writer.add_summary(summary, global_step=epoch + 1)
+    train_summary, train_loss, train_f1 = sess.run([model.summary1, model.total_loss, model.f1], feed_dict=feed_dict)
+    train_writer.add_summary(train_summary, global_step=epoch + 1)
 
     feed_dict[placeholders['gc_dropout']] = 0.
     feed_dict.update({placeholders['edge_mask'][key]: value for key, value in val_mask.items()})
 
-    val_loss, val_f1 = sess.run([model.total_loss, model.f1], feed_dict=feed_dict)
+    val_summary1, val_summary2, val_loss, val_f1 = sess.run([model.summary1, model.summary2,
+                                                             model.total_loss, model.f1], feed_dict=feed_dict)
+
+    val_writer.add_summary(val_summary1, global_step=epoch + 1)
+    val_writer.add_summary(val_summary2, global_step=epoch + 1)
 
     print('Epoch {}'.format(epoch + 1))
     print('Train: loss={:.3f}'.format(train_loss))
