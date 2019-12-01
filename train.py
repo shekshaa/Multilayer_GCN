@@ -19,7 +19,7 @@ flags.DEFINE_float('base_gc_dropout', 0., 'Dropout rate (1 - keep probability).'
 flags.DEFINE_integer('use_weight', 1, 'use w_ij')
 flags.DEFINE_float('weight_decay', 5e-4, 'Weight for L2 loss on embedding matrix.')
 flags.DEFINE_integer('featureless', 1, 'featureless')
-flags.DEFINE_float('lmbda', 0., 'Weight for type classification loss term')
+flags.DEFINE_float('lmbda', 0., 'Weight for label classification loss term')
 flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of epochs).')
 flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
 
@@ -88,9 +88,9 @@ sess.run(tf.global_variables_initializer())
 
 now = datetime.now()
 now_time = now.time()
-save_path = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute) + ":" + str(now_time.second)
-train_writer = tf.summary.FileWriter(logdir='./log/{}/train/'.format(save_path))
-val_writer = tf.summary.FileWriter(logdir='./log/{}/val/'.format(save_path))
+save_path = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute)
+train_writer = tf.summary.FileWriter(logdir='./log/Autoencoder/{}/train/'.format(save_path))
+val_writer = tf.summary.FileWriter(logdir='./log/Autoencoder/{}/val/'.format(save_path))
 
 feed_dict = dict()
 feed_dict[placeholders['features']] = features
@@ -107,7 +107,7 @@ for epoch in range(FLAGS.epochs):
 
     sess.run(model.opt, feed_dict=feed_dict)
 
-    train_summary, train_label_acc, train_edge_f1, train_loss = sess.run(
+    train_summary, label_acc, train_edge_f1, train_loss = sess.run(
         [model.summary1, model.label_acc, model.f1, model.total_loss], feed_dict=feed_dict)
 
     train_writer.add_summary(train_summary, global_step=epoch + 1)
@@ -116,8 +116,8 @@ for epoch in range(FLAGS.epochs):
     feed_dict[placeholders['node_gc_dropout']] = 0.
     feed_dict.update({placeholders['edge_mask'][key]: value for key, value in val_mask.items()})
 
-    val_summary1, val_summary2, val_label_acc, val_edge_f1, val_loss = sess.run(
-        [model.summary1, model.summary2, model.label_acc,
+    val_summary1, val_summary2, val_edge_f1, val_loss = sess.run(
+        [model.summary1, model.summary2,
          model.f1, model.total_loss],
         feed_dict=feed_dict)
 
@@ -125,8 +125,9 @@ for epoch in range(FLAGS.epochs):
     val_writer.add_summary(val_summary2, global_step=epoch + 1)
     print('Epoch {}'.format(epoch + 1))
     if FLAGS.lmbda > 0:
-        print('Train: loss={:.3f}, label_acc={:.3f}'.format(train_loss, train_label_acc))
-        print('Val: loss={:.3f}, label_acc={:.3f}, edge_f1={:.3f}'.format(val_loss, val_label_acc, val_edge_f1))
+        print('Train: loss={:.3f}'.format(train_loss))
+        print('Val: loss={:.3f}, edge_f1={:.3f}'.format(val_loss, val_edge_f1))
+        print('Label acc={:.3f}'.format(label_acc))
     else:
         print('Train: loss={:.3f}'.format(train_loss))
         print('Val: loss={:.3f}, edge_f1={:.3f}'.format(val_loss, val_edge_f1))
