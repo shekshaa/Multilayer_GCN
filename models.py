@@ -26,6 +26,10 @@ class WeightedAutoencoder(object):
         self.node_types = placeholders['node_types']
         self.n_types = self.node_types.get_shape().as_list()[1]
 
+        # node label variables
+        self.node_labels = placeholders['node_labels']
+        self.n_labels = self.node_labels.get_shape().as_list()[1]
+
         # network architectural settings
         self.use_weight = use_weight
         self.activation = activation
@@ -41,13 +45,13 @@ class WeightedAutoencoder(object):
         self.h2 = None
         self.w = {}
         self.layers = []
-        self.node_type_logits = None
+        self.node_label_logits = None
         self.edge_module_input_type = None
         self.edge_logits = {}
-        self.node_type_module_input = None
+        self.node_label_module_input = None
         self.edge_module_input = None
-        self.type_acc = 0
-        self.type_loss = 0
+        self.label_acc = 0
+        self.label_loss = 0
         self.recall = 0
         self.precision = 0
         self.f1 = 0
@@ -96,7 +100,7 @@ class WeightedAutoencoder(object):
             'dropout': self.node_gc_dropout,
             'num_features_nonzero': self.num_features_nonzero
         }
-        self.node_type_module_input = self.h2
+        self.node_label_module_input = self.h2
 
         self.layers.append(GraphConvolution(input_dim=FLAGS.hidden2,
                                             output_dim=self.n_types,
@@ -106,7 +110,7 @@ class WeightedAutoencoder(object):
                                             bias=self.bias,
                                             logging=True))
 
-        self.node_type_logits = self.layers[2](self.node_type_module_input)
+        self.node_label_logits = self.layers[2](self.node_label_module_input)
 
         self.edge_module_input = self.h2
         with tf.variable_scope(self.name):
@@ -136,8 +140,8 @@ class WeightedAutoencoder(object):
                                                                            tf.transpose(self.edge_module_input_type[j]))
 
     def loss(self):
-        self.type_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.node_type_logits,
-                                                                                labels=self.node_types))
+        self.label_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.node_label_logits,
+                                                                                 labels=self.node_types))
         self.total_edge_loss = 0
         for i in range(self.n_types):
             for j in range(i, self.n_types):
@@ -156,24 +160,24 @@ class WeightedAutoencoder(object):
         for var in self.layers[0].vars.values():
             l2_reg += tf.nn.l2_loss(var)
 
-        self.total_loss = FLAGS.lmbda * self.type_loss + self.total_edge_loss + FLAGS.weight_decay * l2_reg
+        self.total_loss = FLAGS.lmbda * self.label_loss + self.total_edge_loss + FLAGS.weight_decay * l2_reg
 
     def create_summary(self):
-        summary1_list = [tf.summary.scalar(name='node_type_loss', tensor=self.type_loss),
+        summary1_list = [tf.summary.scalar(name='node_label_loss', tensor=self.label_loss),
                          tf.summary.scalar(name='total_edge_loss', tensor=self.total_edge_loss),
                          tf.summary.scalar(name='total_loss', tensor=self.total_loss)]
         if FLAGS.lmbda > 0:
-            summary1_list += [tf.summary.scalar(name='node_type_loss', tensor=self.type_loss),
-                              tf.summary.scalar(name='node_type_acc', tensor=self.type_acc)]
+            summary1_list += [tf.summary.scalar(name='node_label_loss', tensor=self.label_loss),
+                              tf.summary.scalar(name='node_label_acc', tensor=self.label_acc)]
         summary2_list = [tf.summary.scalar(name='precision', tensor=self.precision),
                          tf.summary.scalar(name='recall', tensor=self.recall),
                          tf.summary.scalar(name='F1', tensor=self.f1)]
         return tf.summary.merge(summary1_list), tf.summary.merge(summary2_list)
 
     def acc(self):
-        type_correct_predictions = tf.equal(tf.argmax(self.node_type_logits, 1),
-                                            tf.argmax(self.node_types, 1))
-        self.type_acc = tf.reduce_mean(tf.cast(type_correct_predictions, dtype=tf.float32))
+        label_correct_predictions = tf.equal(tf.argmax(self.node_label_logits, 1),
+                                             tf.argmax(self.node_types, 1))
+        self.label_acc = tf.reduce_mean(tf.cast(label_correct_predictions, dtype=tf.float32))
 
     def precision_recall_f1(self):
         true_positive = true_negative = false_positive = false_negative = 0

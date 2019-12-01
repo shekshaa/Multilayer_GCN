@@ -88,7 +88,7 @@ def load_aminer():
 
     features = np.concatenate((node_types, one_hot_labels), axis=1)
 
-    return all_sub_adj, node_types, features, labels
+    return all_sub_adj, node_types, features, one_hot_labels
 
 
 def load_infra():
@@ -134,7 +134,7 @@ def load_infra():
 
     features = np.concatenate((node_types, one_hot_labels), axis=1)
 
-    return all_sub_adj, node_types, features, labels
+    return all_sub_adj, node_types, features, one_hot_labels
 
 
 def selection(mat, num_val, num_test, diagonal=False):
