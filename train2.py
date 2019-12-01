@@ -20,13 +20,13 @@ flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of e
 flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
 
 if FLAGS.dataset == 'infra':
-    all_sub_adj, _, _ = load_infra()
+    all_sub_adj, _, _, _ = load_infra()
     train_adj, train_mask, val_mask, test_mask = load_train_val_test2(all_sub_adj)
     train_adj = [train_adj['adj_{}_{}'.format(0, 0)], train_adj['adj_{}_{}'.format(1, 1)],
                  train_adj['adj_{}_{}'.format(2, 2)]]
     super_mask = [[1, 1, 1], [0, 1, 1], [0, 0, 1]]
 else:
-    all_sub_adj, _, _ = load_aminer()
+    all_sub_adj, _, _, _ = load_aminer()
     train_adj, train_mask, val_mask, test_mask = load_train_val_test2(all_sub_adj)
     train_adj = [train_adj['adj_{}_{}'.format(0, 0)], train_adj['adj_{}_{}'.format(1, 1)],
                  train_adj['adj_{}_{}'.format(2, 2)]]
