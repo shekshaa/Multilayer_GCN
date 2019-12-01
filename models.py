@@ -116,8 +116,8 @@ class WeightedAutoencoder(object):
                     if self.super_mask[i][j]:
                         var = glorot(shape=(n_features, n_features), name='w_{}_{}'.format(i, j))
                         tf.summary.histogram(name='w_{}_{}'.format(i, j), values=var)
-                        # self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
-                        self.w['{}_{}'.format(i, j)] = var
+                        self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
+                        # self.w['{}_{}'.format(i, j)] = var
 
         self.edge_module_input_type = [tf.boolean_mask(tensor=self.edge_module_input, mask=self.node_types[:, i])
                                        for i in range(self.n_types)]
