@@ -136,12 +136,12 @@ feed_dict.update({placeholders['edge_mask'][key]: value for key, value in test_m
 test_type_acc, test_edge_f1, test_loss = sess.run([model.type_acc, model.precision, model.total_loss],
                                                   feed_dict=feed_dict)
 print('Test: loss={:.3f}, type_acc={:.3f}, edge_f1={:.3f}'.format(test_loss, test_type_acc, test_edge_f1))
-feed_dict = dict()
-
-feed_dict[placeholders['features']] = features
-feed_dict[placeholders['num_features_nonzero']] = 0.
-feed_dict.update({placeholders['support'][i]: support[i] for i in range(len(support))})
-embedding = sess.run(model.h2, feed_dict=feed_dict)
-visualize_embedding(embedding, labels)
+# feed_dict = dict()
+#
+# feed_dict[placeholders['features']] = features
+# feed_dict[placeholders['num_features_nonzero']] = 0.
+# feed_dict.update({placeholders['support'][i]: support[i] for i in range(len(support))})
+# embedding = sess.run(model.h2, feed_dict=feed_dict)
+# visualize_embedding(embedding, labels)
 
 sess.close()
