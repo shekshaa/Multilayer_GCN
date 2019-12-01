@@ -230,7 +230,6 @@ class ParallelGCN(object):
         self.edge_module_input_type = None
         self.edge_logits = {}
         self.edge_module_input = None
-        self.type_loss = 0
         self.recall = 0
         self.precision = 0
         self.f1 = 0
@@ -240,6 +239,7 @@ class ParallelGCN(object):
         self.build()
         self.loss()
         self.precision_recall_f1()
+        self.summary1, self.summary2 = self.create_summary()
 
         self.opt = self.optimizer.minimize(self.total_loss)
 
@@ -291,6 +291,15 @@ class ParallelGCN(object):
                     else:
                         self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(self.h2['{}'.format(i)],
                                                                            tf.transpose(self.h2['{}'.format(j)]))
+
+    def create_summary(self):
+        summary1_list = [tf.summary.scalar(name='total_edge_loss', tensor=self.total_edge_loss),
+                         tf.summary.scalar(name='total_loss', tensor=self.total_loss)]
+
+        summary2_list = [tf.summary.scalar(name='precision', tensor=self.precision),
+                         tf.summary.scalar(name='recall', tensor=self.recall),
+                         tf.summary.scalar(name='F1', tensor=self.f1)]
+        return tf.summary.merge(summary1_list), tf.summary.merge(summary2_list)
 
     def loss(self):
         self.total_edge_loss = 0
