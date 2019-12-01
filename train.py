@@ -108,7 +108,7 @@ for epoch in range(FLAGS.epochs):
     sess.run(model.opt, feed_dict=feed_dict)
 
     train_summary, train_label_acc, train_edge_f1, train_loss = sess.run(
-        [model.summary1, model.label_acc, model.precision, model.total_loss], feed_dict=feed_dict)
+        [model.summary1, model.label_acc, model.f1, model.total_loss], feed_dict=feed_dict)
 
     train_writer.add_summary(train_summary, global_step=epoch + 1)
 
@@ -118,7 +118,7 @@ for epoch in range(FLAGS.epochs):
 
     val_summary1, val_summary2, val_label_acc, val_edge_f1, val_loss = sess.run(
         [model.summary1, model.summary2, model.label_acc,
-         model.precision, model.total_loss],
+         model.f1, model.total_loss],
         feed_dict=feed_dict)
 
     val_writer.add_summary(val_summary1, global_step=epoch + 1)
@@ -136,7 +136,7 @@ feed_dict[placeholders['base_gc_dropout']] = 0.
 feed_dict[placeholders['node_gc_dropout']] = 0.
 feed_dict.update({placeholders['edge_mask'][key]: value for key, value in test_mask.items()})
 
-test_label_acc, test_edge_f1, test_loss = sess.run([model.label_acc, model.precision, model.total_loss],
+test_label_acc, test_edge_f1, test_loss = sess.run([model.label_acc, model.f1, model.total_loss],
                                                    feed_dict=feed_dict)
 if FLAGS.lmbda > 0:
     print('Test: loss={:.3f}, label_acc={:.3f}, edge_f1={:.3f}'.format(test_loss, test_label_acc, test_edge_f1))
