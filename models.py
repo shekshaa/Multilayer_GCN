@@ -118,9 +118,11 @@ class WeightedAutoencoder(object):
             for i in range(self.n_types):
                 for j in range(i, self.n_types):
                     if self.super_mask[i][j]:
-                        var = glorot(shape=(n_features, n_features), name='w_{}_{}'.format(i, j))
+                        # var = glorot(shape=(n_features, n_features), name='w_{}_{}'.format(i, j))
+                        var = glorot(shape=(n_features, 1), name='w_{}_{}'.format(i, j))
+                        self.w['{}_{}'.format(i, j)] = tf.matrix_diag(var)
                         tf.summary.histogram(name='w_{}_{}'.format(i, j), values=var)
-                        self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
+                        # self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
                         # self.w['{}_{}'.format(i, j)] = var
 
         self.edge_module_input_type = [tf.boolean_mask(tensor=self.edge_module_input, mask=self.node_types[:, i])
@@ -160,11 +162,11 @@ class WeightedAutoencoder(object):
         for var in self.layers[0].vars.values():
             l2_reg += tf.nn.l2_loss(var)
 
-        weight_loss = 0
-        for _, weight in self.w.items():
-            weight_loss += tf.norm(weight)
+        # weight_loss = 0
+        # for _, weight in self.w.items():
+        #     weight_loss += tf.norm(weight)
 
-        self.total_loss = FLAGS.lmbda * self.label_loss + self.total_edge_loss + FLAGS.weight_decay * (l2_reg + weight_loss)
+        self.total_loss = FLAGS.lmbda * self.label_loss + self.total_edge_loss + FLAGS.weight_decay * l2_reg
 
     def create_summary(self):
         summary1_list = [tf.summary.scalar(name='total_edge_loss', tensor=self.total_edge_loss),
