@@ -162,9 +162,9 @@ class WeightedAutoencoder(object):
 
         weight_loss = 0
         for _, weight in self.w.items():
-            weight_loss += tf.norm(weight, ord='fro')
+            weight_loss += tf.norm(weight)
 
-        self.total_loss = FLAGS.lmbda * self.label_loss + self.total_edge_loss + FLAGS.weight_decay * l2_reg + weight_loss
+        self.total_loss = FLAGS.lmbda * self.label_loss + self.total_edge_loss + FLAGS.weight_decay * (l2_reg + weight_loss)
 
     def create_summary(self):
         summary1_list = [tf.summary.scalar(name='total_edge_loss', tensor=self.total_edge_loss),
