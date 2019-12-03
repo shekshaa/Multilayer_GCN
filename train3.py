@@ -11,7 +11,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('model', 'gcn', 'Model string.')  # 'kipf_gcn', 'cheby_gcn'
 flags.DEFINE_string('dataset', 'infra', 'Dataset string.')
 flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
-flags.DEFINE_integer('epochs', 50, 'Number of epochs to train.')
+flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
 flags.DEFINE_integer('hidden1', 32, 'Number of units in hidden layer 1.')
 flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
 flags.DEFINE_float('node_gc_dropout', 0., 'Dropout rate (1 - keep probability).')
