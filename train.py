@@ -3,7 +3,7 @@ import numpy as np
 from gcn.utils import preprocess_adj, chebyshev_polynomials
 import scipy.sparse as sp
 from datetime import datetime
-from utils import load_train_val_test2, load_infra, load_aminer, visualize_embedding
+from utils import load_train_val_test2, load_infra, load_aminer, visualize_embedding, measure_similarity_bases
 from models import WeightedAutoencoder
 
 flags = tf.app.flags
@@ -150,5 +150,11 @@ else:
 # feed_dict.update({placeholders['support'][i]: support[i] for i in range(len(support))})
 # embedding = sess.run(model.h2, feed_dict=feed_dict)
 # visualize_embedding(embedding, labels)
+# weights = sess.run(model.w, feed_dict=feed_dict)
+# key_list = list(weights.keys())
+# for i in range(len(key_list)):
+#     for j in range(i + 1, len(key_list)):
+#         print("Similarty measure between bases " + key_list[i] + " " + key_list[j])
+#         print(measure_similarity_bases(weights[key_list[i]], weights[key_list[j]]))
 
 sess.close()

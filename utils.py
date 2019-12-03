@@ -217,3 +217,10 @@ def load_train_val_test2(all_sub_adj):
                                                                                                              key[-3]))
 
     return sub_adj_train, sub_train_mask, sub_val_mask, sub_test_mask
+
+
+def measure_similarity_bases(mat1, mat2):
+    tr1 = np.trace(np.matmul(mat1, mat1))
+    tr2 = np.trace(np.matmul(mat2, mat2))
+    tr3 = np.trace(np.matmul(mat1, mat2))
+    return tr1 + tr2 - 2 * tr3
