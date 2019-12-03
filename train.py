@@ -150,7 +150,10 @@ else:
 # feed_dict.update({placeholders['support'][i]: support[i] for i in range(len(support))})
 # embedding = sess.run(model.h2, feed_dict=feed_dict)
 # visualize_embedding(embedding, labels)
-# weights = sess.run(model.w, feed_dict=feed_dict)
+weights = sess.run(model.w, feed_dict=feed_dict)
+for key, val in weights.items():
+    print(key)
+    print(val)
 # key_list = list(weights.keys())
 # for i in range(len(key_list)):
 #     for j in range(i + 1, len(key_list)):
