@@ -161,7 +161,7 @@ class WeightedAutoencoder(object):
             l2_reg += tf.nn.l2_loss(var)
 
         weight_loss = 0
-        for _, weight in self.w:
+        for _, weight in self.w.items():
             weight_loss += tf.norm(weight, ord='fro')
 
         self.total_loss = FLAGS.lmbda * self.label_loss + self.total_edge_loss + FLAGS.weight_decay * l2_reg + weight_loss
