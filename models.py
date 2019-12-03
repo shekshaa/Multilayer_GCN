@@ -317,9 +317,11 @@ class WeightedMixedAutoencoder(object):
             for i in range(self.n_types):
                 for j in range(i, self.n_types):
                     if self.super_mask[i][j]:
-                        var = glorot(shape=(n_features, n_features), name='w_{}_{}'.format(i, j))
+                        # var = glorot(shape=(n_features, n_features), name='w_{}_{}'.format(i, j))
+                        # self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
+                        var = glorot(shape=(n_features, 1), name='w_{}_{}'.format(i, j))
                         tf.summary.histogram(name='w_{}_{}'.format(i, j), values=var)
-                        self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
+                        self.w['{}_{}'.format(i, j)] = tf.matrix_diag(var)
 
         for i in range(self.n_types):
             self.weighted_embedding.append(
