@@ -241,13 +241,14 @@ class WeightedMixedAutoencoder(object):
         self.w = {}
         self.layers = []
         self.node_type_logits = None
+        self.node_type_probs = None
         self.edge_module_input_type = None
-        self.edge_logits = {}
+        self.edge_logits = []
         self.node_type_module_input = None
         self.edge_module_input = None
-        self.node_label_probs = None
-        self.label_acc = 0
-        self.label_loss = 0
+        self.weighted_embedding = []
+        self.type_acc = 0
+        self.type_loss = 0
         self.recall = 0
         self.precision = 0
         self.f1 = 0
@@ -307,7 +308,8 @@ class WeightedMixedAutoencoder(object):
                                             logging=True))
 
         self.node_type_logits = self.layers[2](self.node_type_module_input)
-        self.node_label_probs = tf.nn.softmax(self.node_type_logits)
+        self.node_type_probs = tf.nn.softmax(self.node_type_logits)
+        print(self.node_type_probs.shape)
 
         self.edge_module_input = self.h2
         with tf.variable_scope(self.name):
@@ -319,33 +321,40 @@ class WeightedMixedAutoencoder(object):
                         tf.summary.histogram(name='w_{}_{}'.format(i, j), values=var)
                         self.w['{}_{}'.format(i, j)] = (var + tf.transpose(var)) / 2.
 
-        # self.edge_logits =
-        self.edge_logits = dict()
+        for i in range(self.n_types):
+            self.weighted_embedding.append(
+                tf.multiply(self.edge_module_input, tf.expand_dims(self.node_type_probs[:, i], axis=1)))
+
+        print(self.weighted_embedding)
+
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
                     if self.use_weight:
                         weight = self.w['{}_{}'.format(i, j)]
-                        self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(
-                            tf.matmul(self.edge_module_input_type[i], weight)
-                            , tf.transpose(self.edge_module_input_type[j]))
+                        self.edge_logits.append(tf.matmul(
+                            tf.matmul(self.weighted_embedding[i], weight), tf.transpose(self.weighted_embedding[j])))
                     else:
-                        self.edge_logits['{}_{}'.format(i, j)] = tf.matmul(self.edge_module_input_type[i],
-                                                                           tf.transpose(self.edge_module_input_type[j]))
+                        self.edge_logits.append(tf.matmul(self.weighted_embedding[i],
+                                                          tf.transpose(self.weighted_embedding[j])))
+        self.edge_logits = tf.add_n(self.edge_logits)
+        print(self.edge_logits)
 
     def loss(self):
-        self.label_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.node_label_logits,
-                                                                                 labels=self.node_types))
+        self.type_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.node_type_logits,
+                                                                                labels=self.node_types))
         self.total_edge_loss = 0
         for i in range(self.n_types):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
-                    non_mask_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.edge_logits['{}_{}'
-                                                                            .format(i, j)],
+                    filtered_logits_i = tf.boolean_mask(tensor=self.edge_logits, mask=self.node_types[:, i])
+                    filtered_logits_j = tf.boolean_mask(tensor=tf.transpose(filtered_logits_i),
+                                                        mask=self.node_types[:, j])
+                    filtered_logits = tf.transpose(filtered_logits_j)
+                    non_mask_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=filtered_logits,
                                                                             labels=tf.cast(self.edge_labels[
-                                                                                               'adj_{}_{}'.format(
-                                                                                                   i,
-                                                                                                   j)],
+                                                                                               'adj_{}_{}'.format(i,
+                                                                                                                  j)],
                                                                                            dtype=tf.float32))
 
                     self.total_edge_loss += tf.reduce_mean(self.edge_mask['adj_{}_{}'.format(i, j)] * non_mask_loss)
@@ -354,23 +363,22 @@ class WeightedMixedAutoencoder(object):
         for var in self.layers[0].vars.values():
             l2_reg += tf.nn.l2_loss(var)
 
-        self.total_loss = FLAGS.lmbda * self.label_loss + self.total_edge_loss + FLAGS.weight_decay * l2_reg
+        self.total_loss = FLAGS.lmbda * self.type_loss + self.total_edge_loss + FLAGS.weight_decay * l2_reg
 
     def create_summary(self):
         summary1_list = [tf.summary.scalar(name='total_edge_loss', tensor=self.total_edge_loss),
-                         tf.summary.scalar(name='total_loss', tensor=self.total_loss)]
-        if FLAGS.lmbda > 0:
-            summary1_list += [tf.summary.scalar(name='node_label_loss', tensor=self.label_loss),
-                              tf.summary.scalar(name='node_label_acc', tensor=self.label_acc)]
+                         tf.summary.scalar(name='total_loss', tensor=self.total_loss),
+                         tf.summary.scalar(name='node_label_loss', tensor=self.type_loss),
+                         tf.summary.scalar(name='node_label_acc', tensor=self.type_acc)]
         summary2_list = [tf.summary.scalar(name='precision', tensor=self.precision),
                          tf.summary.scalar(name='recall', tensor=self.recall),
                          tf.summary.scalar(name='F1', tensor=self.f1)]
         return tf.summary.merge(summary1_list), tf.summary.merge(summary2_list)
 
     def acc(self):
-        label_correct_predictions = tf.equal(tf.argmax(self.node_label_logits, 1),
+        label_correct_predictions = tf.equal(tf.argmax(self.node_type_logits, 1),
                                              tf.argmax(self.node_types, 1))
-        self.label_acc = tf.reduce_mean(tf.cast(label_correct_predictions, dtype=tf.float32))
+        self.type_acc = tf.reduce_mean(tf.cast(label_correct_predictions, dtype=tf.float32))
 
     def precision_recall_f1(self):
         true_positive = true_negative = false_positive = false_negative = 0
@@ -378,8 +386,12 @@ class WeightedMixedAutoencoder(object):
             for j in range(i, self.n_types):
                 if self.super_mask[i][j]:
                     labels = self.edge_labels['adj_{}_{}'.format(i, j)]
+                    filtered_logits_i = tf.boolean_mask(tensor=self.edge_logits, mask=self.node_types[:, i])
+                    filtered_logits_j = tf.boolean_mask(tensor=tf.transpose(filtered_logits_i),
+                                                        mask=self.node_types[:, j])
+                    filtered_logits = tf.transpose(filtered_logits_j)
                     edge_prediction = tf.cast(
-                        tf.greater_equal(tf.nn.sigmoid(self.edge_logits['{}_{}'.format(i, j)]), 0.5),
+                        tf.greater_equal(tf.nn.sigmoid(filtered_logits), 0.5),
                         dtype=tf.int32)
                     mask = self.edge_mask['adj_{}_{}'.format(i, j)]
                     true_positive += tf.count_nonzero(tf.cast(edge_prediction * labels, dtype=tf.float32) * mask)
