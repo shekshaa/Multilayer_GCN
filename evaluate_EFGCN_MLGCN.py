@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import pandas as pnd
 from gcn.utils import preprocess_adj, chebyshev_polynomials
 import scipy.sparse as sp
 from datetime import datetime
@@ -10,7 +11,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string('model', 'gcn', 'Model string.')  # 'kipf_gcn', 'cheby_gcn'
 flags.DEFINE_float('learning_rate', 0.05, 'Initial learning rate.')
-flags.DEFINE_integer('epochs', 1, 'Number of epochs to train.')
+flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
 flags.DEFINE_integer('hidden1', 32, 'Number of units in hidden layer 1.')
 flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
 flags.DEFINE_integer('hidden3', 32, 'Number of units in hidden layer 2.')
@@ -20,6 +21,8 @@ flags.DEFINE_integer('use_weight', 1, 'use w_ij')
 flags.DEFINE_float('weight_decay', 5e-4, 'Weight for L2 loss on embedding matrix.')
 flags.DEFINE_integer('featureless', 1, 'featureless')
 flags.DEFINE_float('lmbda', 0., 'Weight for label classification loss term')
+
+
 # flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of epochs).')
 # flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
 
@@ -35,10 +38,9 @@ def load_data(dataset):
     return all_sub_adj, node_types, features, one_hot_labels
 
 
-def train(train_adj,  separated_train_adj, all_sub_adj, features,
+def train(train_adj, separated_train_adj, all_sub_adj, features,
           train_mask, val_mask, test_mask, super_mask,
-          node_types, one_hot_labels):
-
+          node_types, one_hot_labels, time_str):
     n_nodes = train_adj.shape[0]
     # n_features = features.shape[1]
     n_types = node_types.shape[1]
@@ -87,12 +89,9 @@ def train(train_adj,  separated_train_adj, all_sub_adj, features,
 
     sess.run(tf.global_variables_initializer())
 
-    now = datetime.now()
-    now_time = now.time()
-    time_str = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute) + "_w" + str(FLAGS.use_weight)
     save_path = str(FLAGS.learning_rate) + "_" + str(FLAGS.hidden1) + "_" + str(FLAGS.hidden3)
-    train_writer = tf.summary.FileWriter(logdir='./log/EFGCN_MLGCN/' + time_str + '/' + save_path + '/{}/train/')
-    val_writer = tf.summary.FileWriter(logdir='./log/EFGCN_MLGCN/' + time_str + '/' + save_path + '/{}/val/')
+    train_writer = tf.summary.FileWriter(logdir='./log/EFGCN_MLGCN/' + time_str + '/' + save_path + '/train/')
+    val_writer = tf.summary.FileWriter(logdir='./log/EFGCN_MLGCN/' + time_str + '/' + save_path + '/val/')
 
     feed_dict = dict()
     feed_dict[placeholders['features']] = features
@@ -112,8 +111,8 @@ def train(train_adj,  separated_train_adj, all_sub_adj, features,
 
         sess.run(model.opt, feed_dict=feed_dict)
 
-        train_summary, train_edge_f1, train_loss = sess.run(
-            [model.summary1, model.f1, model.total_loss], feed_dict=feed_dict)
+        train_summary, train_loss = sess.run(
+            [model.summary1, model.total_loss], feed_dict=feed_dict)
 
         train_writer.add_summary(train_summary, global_step=epoch + 1)
 
@@ -143,6 +142,7 @@ def train(train_adj,  separated_train_adj, all_sub_adj, features,
     print('Test: loss={:.3f}, edge_f1={:.3f}'.format(test_loss, test_edge_f1))
 
     sess.close()
+    return val_edge_f1, test_edge_f1
 
 
 def evaluate(dataset):
@@ -169,19 +169,39 @@ def evaluate(dataset):
         super_mask = [[1, 1, 1], [0, 1, 0], [0, 0, 1]]
 
     train_adj = sp.vstack((r0, r1, r2))
+    num_runs = 10
     learning_rates = [0.005, 0.01, 0.05]
     hidden1 = [64, 32]
     hidden3 = [32, 16]
-    for l in learning_rates:
+    mean_val_f1_arr = np.zeros(shape=(len(learning_rates), len(hidden1) * len(hidden3)))
+    mean_test_f1_arr = np.zeros(shape=(len(learning_rates), len(hidden1) * len(hidden3)))
+    now = datetime.now()
+    now_time = now.time()
+    time_str = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute) + "_w" + str(FLAGS.use_weight)
+    for i, l in enumerate(learning_rates):
         FLAGS.learning_rate = l
-        for h1 in hidden1:
-            for h3 in hidden3:
+        for j, h1 in enumerate(hidden1):
+            for k, h3 in enumerate(hidden3):
                 print("Learning rate: {}, hidden1: {}, hidden3: {}".format(l, h1, h3))
                 tf.reset_default_graph()
                 FLAGS.hidden3 = h1
                 FLAGS.hidden3 = h3
-                train(train_adj, separated_train_adj, all_sub_adj, features,
-                      train_mask, val_mask, test_mask, super_mask, node_types, one_hot_labels)
+                val_f1_list = []
+                test_f1_list = []
+                for _ in range(num_runs):
+                    val_f1, test_f1 = train(train_adj, separated_train_adj, all_sub_adj, features,
+                                            train_mask, val_mask, test_mask, super_mask,
+                                            node_types, one_hot_labels, time_str)
+                    val_f1_list.append(val_f1)
+                    test_f1_list.append(test_f1)
+
+                mean_val_f1_arr[i, j * 2 + k] = np.mean(val_f1_list)
+                mean_test_f1_arr[i, j * 2 + k] = np.mean(test_f1_list)
+    columns = [str(h1) + '_' + str(h3) for h1 in hidden1 for h3 in hidden3]
+    val_df = pnd.DataFrame(data=mean_val_f1_arr, index=learning_rates, columns=columns, dtype=float)
+    test_df = pnd.DataFrame(data=mean_test_f1_arr, index=learning_rates, columns=columns, dtype=float)
+    val_df.to_csv(path_or_buf='./log/EFGCN_MLGCN/' + time_str + '/val_f1.csv')
+    test_df.to_csv(path_or_buf='./log/EFGCN_MLGCN/' + time_str + '/test_f1.csv')
 
 if __name__ == '__main__':
     evaluate('infra')
