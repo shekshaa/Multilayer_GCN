@@ -173,13 +173,15 @@ def evaluate(dataset):
     learning_rates = [0.005, 0.01, 0.05]
     hidden1 = [64, 32]
     hidden3 = [32, 16]
-    mean_val_f1_arr = np.zeros(shape=(len(learning_rates), len(hidden1) * len(hidden3)))
-    mean_test_f1_arr = np.zeros(shape=(len(learning_rates), len(hidden1) * len(hidden3)))
+    val_f1_arr = []
+    test_f1_arr = []
     now = datetime.now()
     now_time = now.time()
     time_str = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute) + "_w" + str(FLAGS.use_weight)
     for i, l in enumerate(learning_rates):
         FLAGS.learning_rate = l
+        val_f1_arr.append([])
+        test_f1_arr.append([])
         for j, h1 in enumerate(hidden1):
             for k, h3 in enumerate(hidden3):
                 print("Learning rate: {}, hidden1: {}, hidden3: {}".format(l, h1, h3))
@@ -192,14 +194,15 @@ def evaluate(dataset):
                     val_f1, test_f1 = train(train_adj, separated_train_adj, all_sub_adj, features,
                                             train_mask, val_mask, test_mask, super_mask,
                                             node_types, one_hot_labels, time_str)
-                    val_f1_list.append(val_f1)
-                    test_f1_list.append(test_f1)
+                    val_f1_list.append(val_f1 * 100.)
+                    test_f1_list.append(test_f1 * 100.)
 
-                mean_val_f1_arr[i, j * 2 + k] = np.mean(val_f1_list)
-                mean_test_f1_arr[i, j * 2 + k] = np.mean(test_f1_list)
+                val_f1_arr[i].append('{:.2f} ± {:.2f}'.format(np.mean(val_f1_list), np.var(val_f1_list)))
+                test_f1_arr[i].append('{:.2f} ± {:.2f}'.format(np.mean(test_f1_list), np.var(test_f1_list)))
+
     columns = [str(h1) + '_' + str(h3) for h1 in hidden1 for h3 in hidden3]
-    val_df = pnd.DataFrame(data=mean_val_f1_arr, index=learning_rates, columns=columns, dtype=float)
-    test_df = pnd.DataFrame(data=mean_test_f1_arr, index=learning_rates, columns=columns, dtype=float)
+    val_df = pnd.DataFrame(data=val_f1_arr, index=learning_rates, columns=columns, dtype=str)
+    test_df = pnd.DataFrame(data=test_f1_arr, index=learning_rates, columns=columns, dtype=str)
     val_df.to_csv(path_or_buf='./log/EFGCN_MLGCN/' + time_str + '/val_f1.csv')
     test_df.to_csv(path_or_buf='./log/EFGCN_MLGCN/' + time_str + '/test_f1.csv')
 
