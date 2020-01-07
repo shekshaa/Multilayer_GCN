@@ -9,7 +9,7 @@ from models import EFGCN_MLGCN
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
-flags.DEFINE_string('model', 'gcn', 'Model string.')  # 'kipf_gcn', 'cheby_gcn'
+flags.DEFINE_string('model', 'gcn', 'Model name.')
 flags.DEFINE_float('learning_rate', 0.05, 'Initial learning rate.')
 flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
 flags.DEFINE_integer('hidden1', 32, 'Number of units in hidden layer 1.')
@@ -21,10 +21,7 @@ flags.DEFINE_integer('use_weight', 1, 'use w_ij')
 flags.DEFINE_float('weight_decay', 5e-4, 'Weight for L2 loss on embedding matrix.')
 flags.DEFINE_integer('featureless', 1, 'featureless')
 flags.DEFINE_float('lmbda', 0., 'Weight for label classification loss term')
-
-
-# flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of epochs).')
-# flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
+flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
 
 
 def load_data(dataset):
@@ -40,9 +37,9 @@ def load_data(dataset):
 
 def train(train_adj, separated_train_adj, all_sub_adj, features,
           train_mask, val_mask, test_mask, super_mask,
-          node_types, one_hot_labels, time_str):
+          node_types, one_hot_labels,
+          time_str, r):
     n_nodes = train_adj.shape[0]
-    # n_features = features.shape[1]
     n_types = node_types.shape[1]
     n_labels = one_hot_labels.shape[1]
 
@@ -90,8 +87,10 @@ def train(train_adj, separated_train_adj, all_sub_adj, features,
     sess.run(tf.global_variables_initializer())
 
     save_path = str(FLAGS.learning_rate) + "_" + str(FLAGS.hidden1) + "_" + str(FLAGS.hidden3)
-    train_writer = tf.summary.FileWriter(logdir='./log/EFGCN_MLGCN/' + time_str + '/' + save_path + '/train/')
-    val_writer = tf.summary.FileWriter(logdir='./log/EFGCN_MLGCN/' + time_str + '/' + save_path + '/val/')
+    train_writer = tf.summary.FileWriter(logdir='./log/EFGCN_MLGCN/' + time_str + '/' +
+                                                save_path + '/train/{}/'.format(r))
+    val_writer = tf.summary.FileWriter(logdir='./log/EFGCN_MLGCN/' + time_str + '/' +
+                                              save_path + '/val/{}/'.format(r))
 
     feed_dict = dict()
     feed_dict[placeholders['features']] = features
@@ -104,6 +103,7 @@ def train(train_adj, separated_train_adj, all_sub_adj, features,
     feed_dict.update({placeholders['support'][i]: support[i] for i in range(len(support))})
     feed_dict.update({placeholders['edge_labels'][key]: value.todense() for key, value in all_sub_adj.items()})
 
+    val_edge_f1 = 0
     for epoch in range(FLAGS.epochs):
         feed_dict[placeholders['EFGCN_dropout']] = FLAGS.EFGCN_dropout
         feed_dict[placeholders['MLGCN_dropout']] = FLAGS.MLGCN_dropout
@@ -190,21 +190,22 @@ def evaluate(dataset):
                 FLAGS.hidden3 = h3
                 val_f1_list = []
                 test_f1_list = []
-                for _ in range(num_runs):
+                for r in range(num_runs):
                     val_f1, test_f1 = train(train_adj, separated_train_adj, all_sub_adj, features,
                                             train_mask, val_mask, test_mask, super_mask,
-                                            node_types, one_hot_labels, time_str)
+                                            node_types, one_hot_labels, time_str, r)
                     val_f1_list.append(val_f1 * 100.)
                     test_f1_list.append(test_f1 * 100.)
 
-                val_f1_arr[i].append('{:.2f} ± {:.2f}'.format(np.mean(val_f1_list), np.var(val_f1_list)))
-                test_f1_arr[i].append('{:.2f} ± {:.2f}'.format(np.mean(test_f1_list), np.var(test_f1_list)))
+                val_f1_arr[i].append('{:.2f} ± {:.2f}'.format(np.mean(val_f1_list), np.sqrt(np.var(val_f1_list))))
+                test_f1_arr[i].append('{:.2f} ± {:.2f}'.format(np.mean(test_f1_list), np.sqrt(np.var(test_f1_list))))
 
     columns = [str(h1) + '_' + str(h3) for h1 in hidden1 for h3 in hidden3]
     val_df = pnd.DataFrame(data=val_f1_arr, index=learning_rates, columns=columns, dtype=str)
     test_df = pnd.DataFrame(data=test_f1_arr, index=learning_rates, columns=columns, dtype=str)
     val_df.to_csv(path_or_buf='./log/EFGCN_MLGCN/' + time_str + '/val_f1.csv')
     test_df.to_csv(path_or_buf='./log/EFGCN_MLGCN/' + time_str + '/test_f1.csv')
+
 
 if __name__ == '__main__':
     evaluate('infra')
