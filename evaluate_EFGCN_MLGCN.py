@@ -170,7 +170,7 @@ def evaluate(dataset):
 
     train_adj = sp.vstack((r0, r1, r2))
     num_runs = 10
-    learning_rates = [0.001, 0.005, 0.01, 0.05]
+    learning_rates = [0.005, 0.01, 0.05]
     hidden1 = [64, 32]
     hidden3 = [32, 16]
     val_f1_arr = []
@@ -183,10 +183,10 @@ def evaluate(dataset):
         val_f1_arr.append([])
         test_f1_arr.append([])
         for j, h1 in enumerate(hidden1):
+            FLAGS.hidden1 = h1
             for k, h3 in enumerate(hidden3):
                 print("Learning rate: {}, hidden1: {}, hidden3: {}".format(l, h1, h3))
                 tf.reset_default_graph()
-                FLAGS.hidden3 = h1
                 FLAGS.hidden3 = h3
                 val_f1_list = []
                 test_f1_list = []
