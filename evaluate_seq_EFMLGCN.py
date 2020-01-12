@@ -5,7 +5,7 @@ from gcn.utils import preprocess_adj, chebyshev_polynomials
 import scipy.sparse as sp
 from datetime import datetime
 from utils import load_train_val_test2, load_infra, load_aminer
-from models import EFGCN_MLGCN
+from models import Seq_EF_ML_GCN
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -71,12 +71,12 @@ def train(train_adj, separated_train_adj, all_sub_adj, features,
         'num_features_nonzero': tf.placeholder(tf.int32),
     }
 
-    model = EFGCN_MLGCN(name='EFGCN_MLGCN',
-                        placeholders=placeholders,
-                        num_nodes=train_adj.shape[0],
-                        super_mask=super_mask,
-                        use_weight=FLAGS.use_weight,
-                        featureless=FLAGS.featureless)
+    model = Seq_EF_ML_GCN(name='Seq_EFMLGCN',
+                          placeholders=placeholders,
+                          num_nodes=train_adj.shape[0],
+                          super_mask=super_mask,
+                          use_weight=FLAGS.use_weight,
+                          featureless=FLAGS.featureless)
 
     print("Model Created!")
 
@@ -87,9 +87,9 @@ def train(train_adj, separated_train_adj, all_sub_adj, features,
     sess.run(tf.global_variables_initializer())
 
     save_path = str(FLAGS.learning_rate) + "_" + str(FLAGS.hidden1) + "_" + str(FLAGS.hidden3)
-    train_writer = tf.summary.FileWriter(logdir='./log/EFGCN_MLGCN/' + time_str + '/' +
+    train_writer = tf.summary.FileWriter(logdir='./log/Seq_EFMLGCN/' + time_str + '/' +
                                                 save_path + '/train/{}/'.format(r))
-    val_writer = tf.summary.FileWriter(logdir='./log/EFGCN_MLGCN/' + time_str + '/' +
+    val_writer = tf.summary.FileWriter(logdir='./log/Seq_EFMLGCN/' + time_str + '/' +
                                               save_path + '/val/{}/'.format(r))
 
     feed_dict = dict()
@@ -170,7 +170,7 @@ def evaluate(dataset):
 
     train_adj = sp.vstack((r0, r1, r2))
     num_runs = 10
-    learning_rates = [0.005, 0.01, 0.05]
+    learning_rates = [0.001, 0.005, 0.01, 0.05]
     hidden1 = [64, 32]
     hidden3 = [32, 16]
     val_f1_arr = []
@@ -203,8 +203,8 @@ def evaluate(dataset):
     columns = [str(h1) + '_' + str(h3) for h1 in hidden1 for h3 in hidden3]
     val_df = pnd.DataFrame(data=val_f1_arr, index=learning_rates, columns=columns, dtype=str)
     test_df = pnd.DataFrame(data=test_f1_arr, index=learning_rates, columns=columns, dtype=str)
-    val_df.to_csv(path_or_buf='./log/EFGCN_MLGCN/' + time_str + '/val_f1.csv')
-    test_df.to_csv(path_or_buf='./log/EFGCN_MLGCN/' + time_str + '/test_f1.csv')
+    val_df.to_csv(path_or_buf='./log/Seq_EFMLGCN/' + time_str + '/val_f1.csv')
+    test_df.to_csv(path_or_buf='./log/Seq_EFMLGCN/' + time_str + '/test_f1.csv')
 
 
 if __name__ == '__main__':
