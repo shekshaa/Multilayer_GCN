@@ -175,7 +175,7 @@ def evaluate(dataset):
 
     num_runs = 10
     hidden1 = [64, 32]
-    learning_rates = [0.001, 0.005, 0.01, 0.05]
+    learning_rates = [0.001, 0.005, 0.01]
     aggregations = ['mean', 'concat']
     now = datetime.now()
     now_time = now.time()

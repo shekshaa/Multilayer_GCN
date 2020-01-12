@@ -170,7 +170,7 @@ def evaluate(dataset):
 
     train_adj = sp.vstack((r0, r1, r2))
     num_runs = 10
-    learning_rates = [0.001, 0.005, 0.01, 0.05]
+    learning_rates = [0.001, 0.005, 0.01]
     hidden1 = [64, 32]
     hidden3 = [32, 16]
     val_f1_arr = []
