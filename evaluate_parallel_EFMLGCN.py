@@ -89,7 +89,7 @@ def train(train_adj, separated_train_adj, all_sub_adj, features,
 
     sess.run(tf.global_variables_initializer())
 
-    save_path = str(FLAGS.learning_rate) + "_" + str(FLAGS.hidden1) + "_" + str(FLAGS.hidden2)
+    save_path = str(FLAGS.learning_rate) + "_" + str(FLAGS.hidden1) + "_" + str(FLAGS.aggregation)
     train_writer = tf.summary.FileWriter(logdir='./log/Parallel_EFMLGCN/' + time_str + '/' +
                                                 save_path + '/train/{}/'.format(r))
     val_writer = tf.summary.FileWriter(logdir='./log/Parallel_EFMLGCN/' + time_str + '/' +
