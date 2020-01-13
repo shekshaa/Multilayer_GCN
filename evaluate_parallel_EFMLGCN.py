@@ -11,7 +11,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string('model', 'gcn', 'Model name.')
 flags.DEFINE_float('learning_rate', 0.05, 'Initial learning rate.')
-flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
+flags.DEFINE_integer('epochs', 1, 'Number of epochs to train.')
 flags.DEFINE_integer('hidden1', 32, 'Number of units in hidden layer 1.')
 flags.DEFINE_integer('hidden2', 16, 'Number of units in hidden layer 2.')
 flags.DEFINE_string('aggregation', 'mean', 'Aggregation function')
@@ -89,7 +89,7 @@ def train(train_adj, separated_train_adj, all_sub_adj, features,
 
     sess.run(tf.global_variables_initializer())
 
-    save_path = str(FLAGS.learning_rate) + "_" + str(FLAGS.hidden1) + "_" + str(FLAGS.aggregation)
+    save_path = str(FLAGS.learning_rate) + "_" + str(FLAGS.hidden1) + "_" + FLAGS.aggregation
     train_writer = tf.summary.FileWriter(logdir='./log/Parallel_EFMLGCN/' + time_str + '/' +
                                                 save_path + '/train/{}/'.format(r))
     val_writer = tf.summary.FileWriter(logdir='./log/Parallel_EFMLGCN/' + time_str + '/' +
@@ -173,9 +173,11 @@ def evaluate(dataset):
 
     train_adj = sp.vstack((r0, r1, r2))
 
-    num_runs = 10
-    hidden1 = [64, 32]
-    learning_rates = [0.001, 0.005, 0.01]
+    num_runs = 1
+    # hidden1 = [64, 32]
+    hidden1 = [64]
+    # learning_rates = [0.001, 0.005, 0.01]
+    learning_rates = [0.001, 0.005]
     aggregations = ['mean', 'concat']
     now = datetime.now()
     now_time = now.time()
