@@ -11,7 +11,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string('model', 'gcn', 'Model name.')
 flags.DEFINE_float('learning_rate', 0.05, 'Initial learning rate.')
-flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
+flags.DEFINE_integer('epochs', 300, 'Number of epochs to train.')
 flags.DEFINE_integer('hidden1', 32, 'Number of units in hidden layer 1.')
 flags.DEFINE_integer('hidden2', 16, 'Number of units in hidden layer 2.')
 flags.DEFINE_string('aggregation', 'mean', 'Aggregation function')
@@ -175,8 +175,10 @@ def evaluate(dataset):
 
     num_runs = 10
     hidden1 = [64, 32]
-    learning_rates = [0.001, 0.005, 0.01]
-    aggregations = ['mean', 'concat']
+    # learning_rates = [0.001, 0.005, 0.01]
+    # aggregations = ['mean', 'concat']
+    learning_rates = [0.001]
+    aggregations = ['concat']
     now = datetime.now()
     now_time = now.time()
     time_str = str(now.date()) + "_" + str(now_time.hour) + ":" + str(now_time.minute) + "_w" + str(FLAGS.use_weight)
